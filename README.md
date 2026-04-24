@@ -2,7 +2,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
-    <title>Sistem Input Barang Masuk | Rekap Per Nama Barang + Total</title>
+    <title>Sistem Input Barang Masuk | Rekap Barang + Riwayat</title>
     <!-- SheetJS library untuk export Excel -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <style>
@@ -24,6 +24,7 @@
             margin: 0 auto;
         }
 
+        /* Header */
         .main-header {
             background: linear-gradient(135deg, #0f2b3d 0%, #1a3a4f 100%);
             color: white;
@@ -51,6 +52,7 @@
             margin-top: 6px;
         }
 
+        /* Tab Navigation */
         .tab-navigation {
             display: flex;
             background: white;
@@ -80,6 +82,7 @@
             background: #e2e8f0;
         }
 
+        /* Kartu Form */
         .form-card {
             background: white;
             padding: 24px 28px;
@@ -238,6 +241,7 @@
             color: white;
         }
 
+        /* Section Data */
         .data-section {
             background: white;
             border-radius: 24px;
@@ -297,6 +301,7 @@
             background: #eef2ff;
         }
 
+        /* Filter Panel */
         .filter-panel {
             background: #f9fbfd;
             padding: 16px 20px;
@@ -341,6 +346,7 @@
             font-size: 0.75rem;
         }
 
+        /* Tabel */
         .table-wrapper {
             overflow-x: auto;
             border-radius: 18px;
@@ -382,13 +388,13 @@
             color: #0f2b3d;
         }
 
+        /* Tabel Rekap */
         .rekap-table th, .rekap-table td {
             text-align: left;
         }
         .rekap-table td:first-child,
         .rekap-table th:first-child {
-            text-align: center;
-            width: 50px;
+            text-align: left;
         }
         .total-row {
             background: #f1f5f9;
@@ -502,6 +508,7 @@
             color: #5b6e8c;
         }
 
+        /* Tab content */
         .tab-content {
             display: none;
         }
@@ -526,7 +533,7 @@
 <div class="app-container">
     <div class="main-header">
         <h1>Sistem Pencatatan Barang Masuk</h1>
-        <p>Input dengan dropdown | Rekap Barang (Total semua quantity per Nama Barang)</p>
+        <p>Input dengan dropdown | Rekap Barang (total per nama barang) | Export Excel</p>
     </div>
 
     <!-- FORM TAMBAH / EDIT -->
@@ -534,12 +541,12 @@
         <form id="barangForm">
             <div class="form-grid">
                 <div class="input-group">
-                    <label>🏭 Nama Supplier <span>Dropdown + Tambah</span></label>
+                    <label>🏭 Nama Supplier </label>
                     <div class="select-with-add">
                         <select id="supplierSelect" required>
                             <option value="" disabled selected>-- Pilih Supplier --</option>
                         </select>
-                        <button type="button" class="btn-add-option" id="addSupplierBtn" title="Tambah Supplier baru">+</button>
+                        <button type="button" class="btn-add-option" id="addSupplierBtn" title="Tambah baru">+</button>
                     </div>
                     <div id="supplierAddContainer" style="display:none;" class="inline-input">
                         <input type="text" id="newSupplierInput" placeholder="Nama supplier baru">
@@ -549,12 +556,12 @@
                 </div>
 
                 <div class="input-group">
-                    <label>📦 Nama Barang <span>Dropdown + Tambah</span></label>
+                    <label>📦 Nama Barang </label>
                     <div class="select-with-add">
                         <select id="barangSelect" required>
                             <option value="" disabled selected>-- Pilih Barang --</option>
                         </select>
-                        <button type="button" class="btn-add-option" id="addBarangBtn" title="Tambah Barang baru">+</button>
+                        <button type="button" class="btn-add-option" id="addBarangBtn" title="Tambah Barang">+</button>
                     </div>
                     <div id="barangAddContainer" style="display:none;" class="inline-input">
                         <input type="text" id="newBarangInput" placeholder="Nama barang baru">
@@ -587,7 +594,7 @@
                 </div>
 
                 <div class="input-group">
-                    <label>📏 Satuan <span>Dropdown + Tambah</span></label>
+                    <label>📏 Satuan </label>
                     <div class="select-with-add">
                         <select id="unitSelect" required>
                             <option value="" disabled selected>-- Pilih Satuan --</option>
@@ -601,7 +608,7 @@
                             <option>meter</option>
                             <option>liter</option>
                         </select>
-                        <button type="button" class="btn-add-option" id="addUnitBtn" title="Tambah Satuan baru">+</button>
+                        <button type="button" class="btn-add-option" id="addUnitBtn" title="Tambah Satuan">+</button>
                     </div>
                     <div id="unitAddContainer" style="display:none;" class="inline-input">
                         <input type="text" id="newUnitInput" placeholder="Satuan baru (contoh: dus)">
@@ -620,9 +627,9 @@
                 </div>
             </div>
             <div class="btn-group">
-                <button type="submit" class="btn btn-primary" id="submitBtn">➕ Tambah Barang</button>
+                <button type="submit" class="btn btn-primary" id="submitBtn">Tambah Barang</button>
                 <button type="button" id="resetFormBtn" class="btn btn-secondary">🗑️ Reset Form</button>
-                <button type="button" id="cancelEditBtn" class="btn btn-secondary" style="display:none;">✖️ Batalkan Edit</button>
+                <button type="button" id="cancelEditBtn" class="btn btn-secondary" style="display:none;">Batalkan Edit</button>
             </div>
         </form>
     </div>
@@ -667,7 +674,7 @@
                     <label>🗓️ Filter Bulan</label>
                     <input type="month" id="filterBulan">
                 </div>
-                <button id="clearFilterBtn" class="btn-reset-filter">✖️ Reset Filter</button>
+                <button id="clearFilterBtn" class="btn-reset-filter">Reset Filter</button>
             </div>
 
             <div id="infoFilter" class="info-search"></div>
@@ -680,7 +687,7 @@
                     <tbody id="tableBody">
                         <tr class="empty-row"><td colspan="8">⚡ Belum ada data. Silakan tambah barang masuk.</td></tr>
                     </tbody>
-                寸瘁
+                </table>
             </div>
             <div class="pagination" id="paginationContainer"></div>
         </div>
@@ -715,7 +722,7 @@
                         <option>Trapezoid</option><option>Sticker</option><option>Lainnya</option>
                     </select>
                 </div>
-                <button id="resetRekapFilterBtn" class="btn-reset-filter">✖️ Reset Filter</button>
+                <button id="resetRekapFilterBtn" class="btn-reset-filter">Reset Filter</button>
             </div>
 
             <div id="infoRekap" class="info-search"></div>
@@ -723,17 +730,17 @@
             <div class="table-wrapper">
                 <table class="rekap-table" id="rekapTable">
                     <thead>
-                        <tr><th>No</th><th>Nama Barang</th><th>Kategori</th><th>Total Jumlah</th><th>Satuan (bisa bervariasi)</th><th>Detail Penerimaan</th></tr>
+                        <tr><th>No</th><th>Nama Barang</th><th>Kategori</th><th>Satuan</th><th>Total Jumlah Masuk</th><th>Detail Penerimaan</th></tr>
                     </thead>
                     <tbody id="rekapBody">
                         <tr class="empty-row"><td colspan="6">⚡ Belum ada data barang.学</tr>
                     </tbody>
-                寸瘁
+                 </table>
             </div>
         </div>
     </div>
     
-    <footer>📌 Rekap Barang: Total Jumlah = penjumlahan semua quantity dari nama barang yang sama (tanpa memisahkan satuan).</footer>
+    <footer>📌 Supplier, Nama Barang, dan Satuan menggunakan dropdown select. Klik tombol + untuk menambah opsi baru. Tab Rekap menampilkan total per nama barang.</footer>
     <div id="toastMessage" class="toast-msg"></div>
 </div>
 
@@ -1089,7 +1096,7 @@
         editMode = false;
         editingId = null;
         resetFormFields();
-        submitBtn.textContent = '➕ Tambah Barang';
+        submitBtn.textContent = 'Tambah Barang';
         submitBtn.classList.remove('btn-edit-mode');
         cancelEditBtn.style.display = 'none';
         showToast('Mode Edit dibatalkan', false);
@@ -1173,29 +1180,27 @@
         showToast(`📎 Ekspor ${filteredInventory.length} data ke Excel`);
     }
 
-    // ========== REKAP BARANG (TOTAL PER NAMA - MENJUMLAH SEMUA QUANTITY) ==========
+    // ========== REKAP BARANG ==========
     function renderRekap() {
-        // Group by namaBarang (tanpa memisahkan satuan)
-        const rekapData = new Map(); // key: namaBarang
+        // Group by namaBarang + satuan (karena satuan bisa berbeda)
+        const rekapData = new Map(); // key: "namaBarang||satuan"
         
         inventory.forEach(item => {
-            const key = item.namaBarang;
+            const key = `${item.namaBarang}||${item.unit}`;
             if (!rekapData.has(key)) {
                 rekapData.set(key, {
                     namaBarang: item.namaBarang,
                     kategori: item.kategori,
-                    totalJumlah: 0,
-                    satuanList: new Set(),
+                    satuan: item.unit,
+                    total: 0,
                     details: []
                 });
             }
             const data = rekapData.get(key);
-            data.totalJumlah += item.jumlah;
-            data.satuanList.add(item.unit);
+            data.total += item.jumlah;
             data.details.push({
                 tanggal: item.tanggalMasuk,
                 jumlah: item.jumlah,
-                satuan: item.unit,
                 supplier: item.supplier,
                 catatan: item.catatan
             });
@@ -1226,31 +1231,27 @@
         }
         
         let html = '';
-        let grandTotal = 0;
         rekapArray.forEach((item, idx) => {
-            grandTotal += item.totalJumlah;
-            // Format satuan yang digunakan
-            const satuanText = Array.from(item.satuanList).join(', ');
             // Buat detail penerimaan
             const detailList = item.details.map(d => {
-                return `${formatDate(d.tanggal)}: ${d.jumlah.toLocaleString()} ${d.satuan} (${d.supplier})${d.catatan ? ' - ' + d.catatan : ''}`;
+                return `${formatDate(d.tanggal)}: ${d.jumlah.toLocaleString()} ${item.satuan} (${d.supplier})${d.catatan ? ' - ' + d.catatan : ''}`;
             }).join('<br>');
             
             html += `<tr>
-                <td style="text-align:center">${idx + 1}</td>
+                <td>${idx + 1}</td>
                 <td><strong>${escapeHtml(item.namaBarang)}</strong></td>
                 <td>${escapeHtml(item.kategori)}</td>
-                <td style="text-align:right; font-weight:bold; color:#0f2b3d; font-size:1rem;">${item.totalJumlah.toLocaleString()}</td>
-                <td style="font-size:0.7rem;">${escapeHtml(satuanText) || '-'}</td>
-                <td style="font-size:0.7rem; max-width:300px;">${detailList || '-'}</td>
+                <td>${escapeHtml(item.satuan)}</td>
+                <td style="text-align:right; font-weight:bold; color:#0f2b3d;">${item.total.toLocaleString()}</td>
+                <td style="font-size:0.7rem; max-width:250px;">${detailList || '-'}</td>
             </tr>`;
         });
         
         // Tambah baris total keseluruhan
-        html += `<tr class="total-row"><td colspan="3" style="text-align:right; font-weight:bold;">GRAND TOTAL</td>
-                 <td style="text-align:right; font-weight:bold; font-size:1rem;">${grandTotal.toLocaleString()}</td>
-                 <td colspan="2"></td>
-                 </tr>`;
+        const grandTotal = rekapArray.reduce((sum, item) => sum + item.total, 0);
+        html += `<tr class="total-row"><td colspan="4" style="text-align:right; font-weight:bold;">GRAND TOTAL</td>
+                 <td style="text-align:right; font-weight:bold;">${grandTotal.toLocaleString()}</td>
+                 <td></td></tr>`;
         
         rekapBody.innerHTML = html;
     }
@@ -1267,26 +1268,24 @@
         // Rekalkulasi untuk export
         const rekapData = new Map();
         inventory.forEach(item => {
-            const key = item.namaBarang;
+            const key = `${item.namaBarang}||${item.unit}`;
             if (!rekapData.has(key)) {
-                rekapData.set(key, { namaBarang: item.namaBarang, kategori: item.kategori, totalJumlah: 0, satuan: item.unit });
+                rekapData.set(key, { namaBarang: item.namaBarang, kategori: item.kategori, satuan: item.unit, total: 0 });
             }
-            const data = rekapData.get(key);
-            data.totalJumlah += item.jumlah;
-            if (data.satuan !== item.unit) data.satuan = data.satuan + ', ' + item.unit;
+            rekapData.get(key).total += item.jumlah;
         });
         
-        const sheetData = [['No', 'Nama Barang', 'Kategori', 'Total Jumlah Masuk', 'Satuan yang Digunakan']];
+        const sheetData = [['No', 'Nama Barang', 'Kategori', 'Satuan', 'Total Jumlah Masuk']];
         let idx = 1;
         let grandTotal = 0;
         Array.from(rekapData.values()).sort((a,b) => a.namaBarang.localeCompare(b.namaBarang)).forEach(item => {
-            sheetData.push([idx++, item.namaBarang, item.kategori, item.totalJumlah, item.satuan]);
-            grandTotal += item.totalJumlah;
+            sheetData.push([idx++, item.namaBarang, item.kategori, item.satuan, item.total]);
+            grandTotal += item.total;
         });
-        sheetData.push(['', '', 'GRAND TOTAL', grandTotal, '']);
+        sheetData.push(['', '', '', 'GRAND TOTAL', grandTotal]);
         
         const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
-        worksheet['!cols'] = [{wch:6},{wch:35},{wch:25},{wch:18},{wch:20}];
+        worksheet['!cols'] = [{wch:6},{wch:35},{wch:25},{wch:12},{wch:18}];
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Rekap Barang');
         XLSX.writeFile(workbook, `Rekap_Barang_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.xlsx`);
