@@ -21,7 +21,7 @@
 
         /* Container Utama */
         .app-container {
-            max-width: 1400px;
+            max-width: 600px;
             margin: 0 auto;
             background: white;
             border-radius: 32px;
