@@ -12,7 +12,7 @@
 
         body {
             font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-            background: #43c6db;
+            background: #FFFFFF;
             padding: 20px;
             min-height: 100vh;
         }
