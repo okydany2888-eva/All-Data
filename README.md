@@ -11,10 +11,12 @@
         }
 
         body {
-            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-            background: #FFFFFF;
-            padding: 20px;
-            min-height: 100vh;
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', system-ui, -apple-system, sans-serif;
+            background: #f5f7fb;
+            padding: 16px;
+            min-width: 480px;
+            width: 100%;
+            color: #1e293b;
         }
 
         /* Container Utama */
