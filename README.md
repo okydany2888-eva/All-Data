@@ -12,7 +12,7 @@
 
         body {
             font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-            background: #eef2f7;
+            background: #43c6db;
             padding: 20px;
             min-height: 100vh;
         }
@@ -773,6 +773,8 @@
 </html>
 
 
+
+
 <html lang="id">
 <head>
     <meta charset="UTF-8">
@@ -1421,6 +1423,8 @@
 </script>
 </body>
 </html>
+
+
 
 
 <html lang="id">
