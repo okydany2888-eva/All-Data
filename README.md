@@ -2,7 +2,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
-    <title>Barcode Inventory | Rekap Stok di Bawah</title>
+    <title>Barcode Inventory | Stok Akumulasi | Barcode Tetap per Nama Barang</title>
     <!-- Library QR Code -->
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <!-- SheetJS untuk export -->
@@ -133,7 +133,6 @@
         @media (max-width: 640px) {
             .btn { width: 100%; justify-content: center; }
             .flex-between { flex-direction: column; align-items: stretch; }
-            .action-group { display: flex; flex-direction: column; gap: 8px; }
         }
         .rekapan-card {
             background: linear-gradient(135deg, #fef9e3, #fef3c7);
@@ -145,6 +144,10 @@
             color: #64748b;
             margin-top: 20px;
         }
+        .highlight {
+            background: #fef9c3;
+            transition: 0.3s;
+        }
     </style>
 </head>
 <body>
@@ -154,39 +157,38 @@
         <div class="flex-between">
             <div>
                 <h1>📦 Barcode Inventory Pro</h1>
-                <p>Barang Masuk/Keluar • Scan Otomatis Kurangi Stok • Rekap Stok di Bawah</p>
+                <p>✨ Kode barcode TETAP untuk barang yang sama • Stok otomatis terakumulasi</p>
             </div>
             <div class="badge" style="background:#ffffff30;">🔍 Scan = keluar otomatis</div>
         </div>
     </div>
 
-    <!-- Form Tambah Barang (Barcode otomatis) -->
+    <!-- Form Tambah Stok Barang (Jika barang belum ada, buat barcode baru. Jika sudah ada, tambah stok) -->
     <div class="card">
-        <h3>Tambah Barang & Barcode (QR Persegi)</h3>
+        <h3>Tambah Stok Barang Masuk</h3>
         <div class="form-grid">
             <div class="input-group">
                 <label>Nama Barang</label>
-                <input type="text" id="itemName" placeholder="Contoh: Headset, Mouse" value="Speaker Bluetooth">
+                <input type="text" id="itemName" placeholder="Contoh: Speaker Bluetooth" value="Speaker JBL">
             </div>
             <div class="input-group">
-                <label>Kode Unik (Otomatis)</label>
-                <input type="text" id="autoCode" readonly>
+                <label>Jumlah Tambah Stok</label>
+                <input type="number" id="addStockQty" value="1" min="1">
             </div>
             <div class="input-group">
-                <label>Stok Awal (Masuk)</label>
-                <input type="number" id="initialStock" value="1" min="1">
-            </div>
-            <div class="input-group">
-                <button class="btn btn-primary" id="addItemBtn" style="margin-top: 22px;">✨ Generate & Simpan</button>
+                <button class="btn btn-primary" id="addStockBtn" style="margin-top: 22px;">📦 Tambah Stok Masuk</button>
             </div>
         </div>
-        <div class="badge" style="background:#e6f0ff;">🔑 Kode unik otomatis: INV/YYMMDD/XXXXX | Barcode QR berisi IN/OUT|KODE|NAMA</div>
+        <div class="badge" style="background:#e6f0ff;">
+            🔑 <strong>Konsep:</strong> Setiap nama barang memiliki SATU kode barcode tetap (unik).<br>
+            Jika barang sudah ada, stok akan bertambah. Jika barang baru, dibuatkan barcode baru otomatis.
+        </div>
     </div>
 
     <!-- Tabel Detail Barang + Barcode + Download -->
     <div class="card">
         <div class="flex-between">
-            <h3>📋 Daftar Barang & Barcode</h3>
+            <h3>📋 Daftar Barang & Barcode Tetap</h3>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                 <button class="btn btn-success btn-sm" id="printAllBarcodeBtn">🖨️ Cetak Semua Barcode</button>
             </div>
@@ -194,18 +196,18 @@
         <div style="overflow-x: auto;">
             <table id="barangTable">
                 <thead>
-                    <tr><th>No</th><th>Nama Barang</th><th>Kode Unik</th><th>Total Masuk</th><th>Total Keluar</th><th>Barcode QR</th><th>Download Barcode</th><th>Aksi</th></tr>
+                    <tr><th>No</th><th>Nama Barang</th><th>Kode Unik (Tetap)</th><th>Total Masuk</th><th>Total Keluar</th><th>Barcode QR</th><th>Download Barcode</th><th>Aksi</th></tr>
                 </thead>
                 <tbody id="barangBody"></tbody>
             </table>
         </div>
-        <div class="info-footer" style="margin-top: 12px;">💡 Klik gambar barcode untuk preview besar | Tombol "+ Masuk" untuk tambah stok manual</div>
+        <div class="info-footer" style="margin-top: 12px;">💡 Kode barcode bersifat tetap per nama barang. Scan barcode dengan format OUT akan mengurangi stok.</div>
     </div>
 
     <!-- Scanner Kamera (Otomatis mengurangi stok jika scan barang keluar) -->
     <div class="scanner-area">
         <div class="flex-between">
-            <div><strong>📷 Scan Barcode QR (Kamera HP)</strong><br><span style="font-size:12px;">Barang keluar → stok otomatis berkurang</span></div>
+            <div><strong>📷 Scan Barcode QR (Kamera HP)</strong><br><span style="font-size:12px;">Barang keluar → stok otomatis berkurang 1</span></div>
             <div>
                 <button id="startScanBtn" class="btn btn-primary btn-sm">▶ Mulai Scan</button>
                 <button id="stopScanBtn" class="btn btn-danger btn-sm">⏹ Stop</button>
@@ -225,9 +227,7 @@
         </div>
         <div style="overflow-x: auto;">
             <table id="rekapTable">
-                <thead>
-                    <tr><th>Nama Barang</th><th>Total Masuk</th><th>Total Keluar</th><th>Stok Akhir</th></tr>
-                </thead>
+                <thead><tr><th>Nama Barang</th><th>Total Masuk</th><th>Total Keluar</th><th>Stok Akhir</th></tr></thead>
                 <tbody id="rekapBody"></tbody>
             </table>
         </div>
@@ -235,7 +235,7 @@
     </div>
 
     <div class="info-footer">
-        💡 Scan barcode dengan format [OUT|KODE_UNIK|NAMA] akan otomatis mengurangi stok keluar. Barcode format [IN|...] hanya untuk info.
+        💡 <strong>Aturan:</strong> Setiap nama barang hanya memiliki 1 kode barcode yang tetap. Scan barcode dengan format [OUT|KODE|NAMA] akan mengurangi stok keluar otomatis.
     </div>
 </div>
 
@@ -244,17 +244,22 @@
 
 <script>
     // ==================== DATA MODEL ====================
-    // items: { id, name, uniqueCode, totalMasuk, totalKeluar, qrDataURL, rawValue }
+    // items: { id, name, uniqueCode, totalMasuk, totalKeluar, qrDataURL, rawValueIN, rawValueOUT }
+    // rawValueIN  = IN|KODE|NAMA  (barcode untuk info/masuk)
+    // rawValueOUT = OUT|KODE|NAMA (barcode untuk keluar, scan ini akan kurangi stok)
+    // TAPI agar user mudah, kita tampilkan SATU QR yang mewakili? Lebih baik tampilkan QR untuk OUT (karena scan utama untuk keluar)
+    // Namun supaya fleksibel, kita tampilkan satu QR yang berisi format OUT|KODE|NAMA (karena scan keluar adalah yang utama).
+    // Untuk keperluan cetak, kita cukup menggunakan QR dengan format OUT.
     let items = [];
 
-    // Helper generate kode unik
-    function generateUniqueCode() {
-        const now = new Date();
-        const yy = now.getFullYear().toString().slice(-2);
-        const mm = (now.getMonth()+1).toString().padStart(2,'0');
-        const dd = now.getDate().toString().padStart(2,'0');
-        const rand = Math.floor(Math.random()*100000).toString().padStart(5,'0');
-        return `INV/${yy}${mm}${dd}/${rand}`;
+    // Helper generate kode unik tetap berdasarkan nama (hash sederhana atau random once)
+    function generateStableUniqueCodeFromName(name) {
+        // Membuat kode unik berdasarkan nama + timestamp awal (hanya sekali saat barang pertama dibuat)
+        // Gunakan nama + random salt namun disimpan tetap setelah dibuat
+        // Untuk demo: generate kode unik yang stabil dengan nama + prefix
+        const base = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const timestamp = Date.now().toString().slice(-6);
+        return `INV/${base.substring(0,10)}/${timestamp}`;
     }
 
     // Generate QR Code (Persegi hitam putih)
@@ -288,24 +293,23 @@
         });
     }
 
-    // Tambah item baru (barcode otomatis dengan prefix IN)
-    async function addNewItem(name, uniqueCode, initialMasuk) {
-        if (!name || !uniqueCode) return null;
-        const rawValue = `IN|${uniqueCode}|${name}`;
-        const qrDataURL = await generateQRCode(rawValue);
-        const newItem = {
+    // Membuat item baru dengan nama (barcode tetap menggunakan format OUT)
+    async function createNewItem(name, initialQty) {
+        const uniqueCode = generateStableUniqueCodeFromName(name + Date.now()); // biar tetap namun unik per item baru
+        const rawValueOUT = `OUT|${uniqueCode}|${name}`;
+        const qrDataURL = await generateQRCode(rawValueOUT, 160);
+        return {
             id: Date.now() + Math.random(),
             name: name,
             uniqueCode: uniqueCode,
-            totalMasuk: initialMasuk,
+            totalMasuk: initialQty,
             totalKeluar: 0,
             qrDataURL: qrDataURL,
-            rawValue: rawValue
+            rawValueOUT: rawValueOUT
         };
-        return newItem;
     }
 
-    // Fungsi untuk mengurangi stok (keluar) berdasarkan scan barcode rawValue
+    // Proses scan untuk mengurangi stok (hanya format OUT yang diproses)
     function processScanForOutgoing(scannedText) {
         if (!scannedText || !scannedText.includes('|')) {
             document.getElementById('scanMessage').innerHTML = `❌ Format barcode tidak valid: ${scannedText.substring(0, 50)}`;
@@ -337,11 +341,13 @@
             item.totalKeluar += 1;
             saveToLocal();
             renderAllTables();
-            document.getElementById('scanMessage').innerHTML = `✅ BARANG KELUAR: ${item.name} | Stok tersisa: ${item.totalMasuk - item.totalKeluar}`;
+            // Animasi highlight pada baris barang yang berkurang
+            highlightRow(item.id);
+            document.getElementById('scanMessage').innerHTML = `✅ BARANG KELUAR: ${item.name} (-1) | Stok tersisa: ${item.totalMasuk - item.totalKeluar}`;
             return true;
         } 
         else if (tipe === 'IN') {
-            document.getElementById('scanMessage').innerHTML = `ℹ️ Barcode MASUK (${item.name}) — Scan ini hanya info, tidak mengubah stok. Gunakan tombol "+ Masuk" untuk menambah stok.`;
+            document.getElementById('scanMessage').innerHTML = `ℹ️ Barcode IN (${item.name}) — Scan ini hanya info. Gunakan form "Tambah Stok Masuk" untuk menambah stok.`;
             return false;
         } 
         else {
@@ -350,7 +356,44 @@
         }
     }
 
-    // Render semua tabel (rekap + daftar barang)
+    // Highlight baris barang yang berubah
+    function highlightRow(itemId) {
+        const rows = document.querySelectorAll('#barangBody tr');
+        for (let row of rows) {
+            if (row.getAttribute('data-item-id') == itemId) {
+                row.classList.add('highlight');
+                setTimeout(() => row.classList.remove('highlight'), 800);
+                break;
+            }
+        }
+    }
+
+    // Fungsi utama: Tambah Stok Masuk (jika barang belum ada -> buat baru, jika sudah ada -> tambah totalMasuk)
+    async function addStockIn(itemName, qty) {
+        if (!itemName) return false;
+        if (qty <= 0) qty = 1;
+        
+        const existingItem = items.find(i => i.name.toLowerCase() === itemName.toLowerCase());
+        if (existingItem) {
+            // Barang sudah ada -> tambah stok masuk
+            existingItem.totalMasuk += qty;
+            saveToLocal();
+            renderAllTables();
+            highlightRow(existingItem.id);
+            document.getElementById('scanMessage').innerHTML = `✅ Stok ${existingItem.name} bertambah ${qty}, total masuk sekarang ${existingItem.totalMasuk}`;
+            return true;
+        } else {
+            // Barang baru -> buat item dengan barcode tetap
+            const newItem = await createNewItem(itemName, qty);
+            items.push(newItem);
+            saveToLocal();
+            renderAllTables();
+            document.getElementById('scanMessage').innerHTML = `🆕 Barang baru "${itemName}" dibuat dengan kode barcode tetap. Stok masuk: ${qty}`;
+            return true;
+        }
+    }
+
+    // Render semua tabel
     async function renderAllTables() {
         renderRekap();
         renderBarangTable();
@@ -373,43 +416,31 @@
         });
     }
 
-    // Fungsi untuk menambah stok masuk manual
-    function addStockInManual(itemId, amount) {
-        const item = items.find(i => i.id === itemId);
-        if (item && amount > 0) {
-            item.totalMasuk += amount;
-            saveToLocal();
-            renderAllTables();
-            alert(`✅ Stok ${item.name} bertambah ${amount}, total masuk sekarang ${item.totalMasuk}`);
-        } else if (amount <= 0) {
-            alert("Jumlah harus lebih dari 0");
-        }
-    }
-
     function renderBarangTable() {
         const tbody = document.getElementById('barangBody');
         if (!items.length) {
-            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">Kosong, tambah barang terlebih dahulu</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">Kosong, tambah stok barang terlebih dahulu</td></tr>';
             return;
         }
         tbody.innerHTML = '';
         items.forEach((item, idx) => {
             const row = tbody.insertRow();
+            row.setAttribute('data-item-id', item.id);
             row.insertCell(0).innerText = idx+1;
             row.insertCell(1).innerText = item.name;
             row.insertCell(2).innerHTML = `<code style="background:#f1f5f9; padding:4px 8px; border-radius:12px;">${item.uniqueCode}</code>`;
             row.insertCell(3).innerHTML = `<span class="stok-masuk">${item.totalMasuk}</span>`;
             row.insertCell(4).innerHTML = `<span class="stok-keluar">${item.totalKeluar}</span>`;
             
-            // gambar barcode
+            // gambar barcode (QR dengan format OUT)
             const imgCell = row.insertCell(5);
             const img = document.createElement('img');
             img.src = item.qrDataURL;
             img.className = 'barcode-img';
-            img.title = 'Klik untuk preview besar';
+            img.title = 'Klik preview - Barcode untuk transaksi keluar';
             img.onclick = () => {
                 const win = window.open();
-                win.document.write(`<html><head><title>Barcode ${item.name}</title></head><body style="display:flex;justify-content:center;align-items:center;min-height:100vh;background:#f0f2f5;"><div style="background:white;padding:30px;border-radius:32px;text-align:center;"><img src="${item.qrDataURL}" style="width:280px;height:auto;"><p style="margin-top:16px;font-family:monospace;">${item.rawValue}</p></div></body></html>`);
+                win.document.write(`<html><head><title>Barcode ${item.name}</title></head><body style="display:flex;justify-content:center;align-items:center;min-height:100vh;background:#f0f2f5;"><div style="background:white;padding:30px;border-radius:32px;text-align:center;"><img src="${item.qrDataURL}" style="width:280px;height:auto;"><p style="margin-top:16px;font-family:monospace;">${item.rawValueOUT}</p><p style="font-size:12px;">Scan untuk mengurangi stok keluar</p></div></body></html>`);
                 win.document.close();
             };
             imgCell.appendChild(img);
@@ -441,19 +472,26 @@
             btnGroup.appendChild(btnPdf);
             downloadCell.appendChild(btnGroup);
             
-            // Tombol tambah stok masuk manual
+            // Tombol kurangi stok manual (keluar) + tombol hapus (jika diperlukan)
             const actionCell = row.insertCell(7);
-            const plusBtn = document.createElement('button');
-            plusBtn.innerText = '+ Masuk';
-            plusBtn.className = 'btn-sm btn-success';
-            plusBtn.style.background = '#059669';
-            plusBtn.onclick = () => {
-                let addQty = prompt(`Tambah stok masuk untuk "${item.name}" (Jumlah):`, "1");
-                if (addQty && !isNaN(parseInt(addQty))) {
-                    addStockInManual(item.id, parseInt(addQty));
+            const minusBtn = document.createElement('button');
+            minusBtn.innerText = '➖ Keluar';
+            minusBtn.className = 'btn-sm btn-danger';
+            minusBtn.style.background = '#dc2626';
+            minusBtn.onclick = () => {
+                if (item.totalMasuk - item.totalKeluar <= 0) {
+                    alert(`Stok ${item.name} habis!`);
+                    return;
+                }
+                if (confirm(`Kurangi stok ${item.name}? (Keluar 1 item)`)) {
+                    item.totalKeluar += 1;
+                    saveToLocal();
+                    renderAllTables();
+                    highlightRow(item.id);
+                    document.getElementById('scanMessage').innerHTML = `📤 Manual: ${item.name} keluar 1, stok tersisa ${item.totalMasuk - item.totalKeluar}`;
                 }
             };
-            actionCell.appendChild(plusBtn);
+            actionCell.appendChild(minusBtn);
         });
     }
 
@@ -500,17 +538,18 @@
         pdf.save(`${name}_barcode.pdf`);
     }
 
-    // Cetak semua barcode (print)
+    // Cetak semua barcode
     document.getElementById('printAllBarcodeBtn').addEventListener('click', () => {
         if (!items.length) { alert("Tidak ada barcode untuk dicetak"); return; }
         const printDiv = document.getElementById('printArea');
-        let html = `<div style="text-align:center; padding:20px;"><h2>Daftar Barcode Inventaris</h2><p>${new Date().toLocaleString()}</p></div><div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:20px;">`;
+        let html = `<div style="text-align:center; padding:20px;"><h2>Daftar Barcode Inventaris (Tetap per Barang)</h2><p>${new Date().toLocaleString()}</p></div><div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:20px;">`;
         items.forEach(item => {
             html += `<div style="border:1px solid #aaa; border-radius: 16px; padding: 12px; text-align:center; page-break-inside:avoid;">
                         <strong>${item.name}</strong><br>
                         <small>${item.uniqueCode}</small><br>
                         <img src="${item.qrDataURL}" width="130" height="130" style="margin:8px auto; background:white;"><br>
-                        <span style="font-size:9px;">${item.rawValue}</span>
+                        <span style="font-size:9px;">${item.rawValueOUT}</span>
+                        <div style="margin-top:6px;"><small>Stok: ${item.totalMasuk - item.totalKeluar}</small></div>
                     </div>`;
         });
         html += `</div>`;
@@ -530,38 +569,26 @@
         XLSX.writeFile(wb, `rekap_stok_${new Date().toISOString().slice(0,19)}.xlsx`);
     });
 
-    // Tambah item
-    document.getElementById('addItemBtn').addEventListener('click', async () => {
+    // Event tombol tambah stok masuk
+    document.getElementById('addStockBtn').addEventListener('click', async () => {
         const name = document.getElementById('itemName').value.trim();
-        let autoCode = document.getElementById('autoCode').value.trim();
-        const initialStock = parseInt(document.getElementById('initialStock').value) || 1;
-        if (!name) { alert("Nama barang wajib diisi"); return; }
-        if (!autoCode) autoCode = generateUniqueCode();
-        // cek duplikat kode
-        if (items.some(i => i.uniqueCode === autoCode)) {
-            autoCode = generateUniqueCode();
-            document.getElementById('autoCode').value = autoCode;
-        }
-        const newItem = await addNewItem(name, autoCode, initialStock);
-        if (newItem) {
-            items.push(newItem);
-            saveToLocal();
-            renderAllTables();
-            document.getElementById('itemName').value = '';
-            document.getElementById('initialStock').value = '1';
-            document.getElementById('autoCode').value = generateUniqueCode();
-        }
+        let qty = parseInt(document.getElementById('addStockQty').value);
+        if (isNaN(qty) || qty < 1) qty = 1;
+        if (!name) { alert("Nama barang harus diisi"); return; }
+        await addStockIn(name, qty);
+        document.getElementById('itemName').value = '';
+        document.getElementById('addStockQty').value = '1';
     });
-    
-    // local storage
+
+    // Local storage
     function saveToLocal() {
-        localStorage.setItem('barcodeStockItemsBottom', JSON.stringify(items.map(i => ({
-            id: i.id, name: i.name, uniqueCode: i.uniqueCode, totalMasuk: i.totalMasuk, totalKeluar: i.totalKeluar, qrDataURL: i.qrDataURL, rawValue: i.rawValue
+        localStorage.setItem('barcodeFixedPerItem', JSON.stringify(items.map(i => ({
+            id: i.id, name: i.name, uniqueCode: i.uniqueCode, totalMasuk: i.totalMasuk, totalKeluar: i.totalKeluar, qrDataURL: i.qrDataURL, rawValueOUT: i.rawValueOUT
         }))));
     }
     
     function loadFromLocal() {
-        const stored = localStorage.getItem('barcodeStockItemsBottom');
+        const stored = localStorage.getItem('barcodeFixedPerItem');
         if (stored && stored.length > 2) {
             items = JSON.parse(stored);
             renderAllTables();
@@ -571,20 +598,15 @@
     }
     
     async function initDemoData() {
-        const sampleCode = generateUniqueCode();
-        const demo = await addNewItem("Speaker JBL", sampleCode, 5);
-        if (demo) items.push(demo);
-        const sampleCode2 = generateUniqueCode();
-        const demo2 = await addNewItem("Mouse Wireless", sampleCode2, 3);
+        const demo1 = await createNewItem("Speaker JBL", 5);
+        const demo2 = await createNewItem("Mouse Wireless", 3);
+        if (demo1) items.push(demo1);
         if (demo2) items.push(demo2);
-        const sampleCode3 = generateUniqueCode();
-        const demo3 = await addNewItem("Keyboard Mekanik", sampleCode3, 2);
-        if (demo3) items.push(demo3);
         saveToLocal();
         renderAllTables();
     }
     
-    // Scanner kamera (otomatis keluar)
+    // Scanner kamera
     let scanner = null;
     const startScan = document.getElementById('startScanBtn');
     const stopScan = document.getElementById('stopScanBtn');
@@ -598,10 +620,8 @@
             await scanner.start(
                 { facingMode: "environment" }, 
                 { fps: 10, qrbox: { width: 280, height: 280 } }, 
-                (decoded) => {
-                    processScanForOutgoing(decoded);
-                }, 
-                (err) => { console.log("scan error", err); }
+                (decoded) => { processScanForOutgoing(decoded); }, 
+                (err) => {}
             );
             document.getElementById('scanMessage').innerHTML = "📷 Kamera aktif, arahkan ke barcode QR...";
         } catch(e) { 
@@ -618,16 +638,9 @@
         readerDiv.innerHTML = "";
         document.getElementById('scanMessage').innerHTML = "⏹ Scanner dihentikan.";
     }
-    
     stopScan.addEventListener('click', stopScanHandler);
     
-    // refresh kode unik pada load
-    function refreshAutoCode() {
-        document.getElementById('autoCode').value = generateUniqueCode();
-    }
-    
     window.addEventListener('DOMContentLoaded', () => {
-        refreshAutoCode();
         loadFromLocal();
     });
 </script>
