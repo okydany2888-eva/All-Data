@@ -155,14 +155,20 @@
             font-family: monospace;
             margin-top: 8px;
         }
+        .date-list {
+            font-size: 0.65rem;
+            max-height: 60px;
+            overflow-y: auto;
+            display: block;
+        }
     </style>
 </head>
 <body>
 <div class="container">
     <div class="card" style="background: linear-gradient(135deg, #1e293b, #0f172a); color:white;">
         <div class="flex-between">
-            <div><h1>📦 Barcode Pro</h1><p style="font-size: 0.7rem;">Rekap Stok + Tanggal Keluar</p></div>
-            <div class="badge" style="background:#ffffff30;">📅 Setiap keluar tercatat tanggal</div>
+            <div><h1>📦 Barcode Pro</h1><p style="font-size: 0.7rem;">Rekap Stok + Tanggal Keluar (Detail)</p></div>
+            <div class="badge" style="background:#ffffff30;">📅 Riwayat tanggal setiap keluar</div>
         </div>
     </div>
 
@@ -208,22 +214,28 @@
     <!-- TAB Transaksi (dengan tanggal keluar detail) -->
     <div class="card">
         <div class="tab-buttons"><div class="tab-btn active" data-tab="masuk">📥 Riwayat Masuk</div><div class="tab-btn" data-tab="keluar">📤 Riwayat Keluar (dengan Tanggal)</div></div>
-        <div id="masukTab" class="transaction-table"><table style="width:100%"><thead><tr><th>Tgl Masuk</th><th>Barang</th><th>Jml (PCS)</th><th>Unit</th></tr></thead><tbody id="masukTableBody"></tbody>｜DSML｜</div>
+        <div id="masukTab" class="transaction-table"><table style="width:100%"><thead><tr><th>Tgl Masuk</th><th>Barang</th><th>Jml (PCS)</th><th>Unit</th></table></thead><tbody id="masukTableBody"></tbody></table></div>
         <div id="keluarTab" style="display:none;" class="transaction-table"><table style="width:100%"><thead><tr><th>Tgl Keluar</th><th>Barang</th><th>Jml (PCS)</th><th>Sumber</th><th>Keterangan</th></tr></thead><tbody id="keluarTableBody"></tbody></table></div>
     </div>
 
-    <!-- REKAP STOK + TANGGAL KELUAR (menampilkan daftar keluar per barang) -->
+    <!-- REKAP STOK + DAFTAR TANGGAL KELUAR (LENGKAP) -->
     <div class="card rekapan-card">
         <div class="flex-between"><h3>📊 REKAP STOK & DAFTAR TANGGAL KELUAR</h3><button class="btn-secondary btn-sm" id="exportRekapExcel">📎 Export Excel</button></div>
         <div class="table-wrapper">
             <table id="rekapTable">
                 <thead>
-                    <tr><th>Nama Barang</th><th>Total Masuk</th><th>Total Keluar</th><th>Stok Akhir</th><th>Tanggal Keluar (Terakhir / Riwayat)</th></tr>
+                    <tr>
+                        <th>Nama Barang</th>
+                        <th>Total Masuk</th>
+                        <th>Total Keluar</th>
+                        <th>Stok Akhir</th>
+                        <th>Tanggal Keluar (Riwayat Lengkap)</th>
+                    </tr>
                 </thead>
                 <tbody id="rekapBody"></tbody>
             </table>
         </div>
-        <div class="info-footer" style="margin-top:8px;">📅 Kolom Tanggal Keluar menampilkan semua tanggal transaksi keluar (urutan terbaru).</div>
+        <div class="info-footer" style="margin-top:8px;">📅 Kolom Tanggal Keluar menampilkan SEMUA tanggal transaksi keluar (dari tertua hingga terbaru) untuk setiap barang.</div>
     </div>
     <div class="info-footer">✨ Setiap scan barcode (URL) akan otomatis mencatat tanggal keluar hari ini dan mengurangi stok.</div>
 </div>
@@ -305,10 +317,11 @@
     function getTotalKeluar(itemId) { return transactions.filter(t => t.itemId === itemId && t.type === 'keluar').reduce((s, t) => s + t.quantityPcs, 0); }
     function getStok(itemId) { return getTotalMasuk(itemId) - getTotalKeluar(itemId); }
     
-    // Ambil semua tanggal keluar untuk suatu barang (urut terbaru)
-    function getOutgoingDates(itemId) {
+    // Ambil SEMUA tanggal keluar untuk suatu barang (urut kronologis dari lama ke baru, atau terbaru)
+    function getAllOutgoingDates(itemId) {
         const keluarTrans = transactions.filter(t => t.itemId === itemId && t.type === 'keluar');
-        return keluarTrans.sort((a,b) => b.date.localeCompare(a.date)).map(t => t.date);
+        // urutkan dari tanggal tertua ke terbaru agar lebih rapi
+        return keluarTrans.sort((a,b) => a.date.localeCompare(b.date)).map(t => t.date);
     }
 
     // Tambah transaksi masuk
@@ -398,7 +411,7 @@
     // ==================== RENDER UI ====================
     function renderAll() {
         renderBarangTable();
-        renderRekapDenganTanggalKeluar();
+        renderRekapDenganSemuaTanggalKeluar();
         renderTransactions();
         updateDropdown();
         updateConversion();
@@ -437,24 +450,33 @@
         });
     }
 
-    // REKAP DENGAN TANGGAL KELUAR (menampilkan daftar tanggal)
-    function renderRekapDenganTanggalKeluar() {
+    // REKAP DENGAN SEMUA TANGGAL KELUAR (Lengkap tanpa batasan)
+    function renderRekapDenganSemuaTanggalKeluar() {
         const tbody = document.getElementById('rekapBody');
-        if (!items.length) { tbody.innerHTML = '<tr><td colspan="5">Kosong</td></tr>'; return; }
+        if (!items.length) { tbody.innerHTML = '<tr><td colspan="5">Kosong</td><tr>'; return; }
         tbody.innerHTML = '';
         items.forEach(item => {
             const masuk = getTotalMasuk(item.id);
             const keluar = getTotalKeluar(item.id);
             const stok = masuk - keluar;
-            const dates = getOutgoingDates(item.id);
-            let tanggalKeluarStr = dates.length ? dates.join(', ') : 'Belum ada keluar';
-            if (dates.length > 3) tanggalKeluarStr = dates.slice(0,3).join(', ') + ` (+${dates.length-3} lainnya)`;
+            const allDates = getAllOutgoingDates(item.id);
+            
+            // Format tampilan tanggal: bullet list atau comma, lebih rapi
+            let tanggalDisplay = '';
+            if (allDates.length === 0) {
+                tanggalDisplay = '<span style="color:#94a3b8;">Belum ada keluar</span>';
+            } else {
+                // Tampilkan semua tanggal dalam format daftar vertikal kecil
+                const dateItems = allDates.map(d => `📅 ${d}`).join('<br>');
+                tanggalDisplay = `<div class="date-list" style="max-height:80px; overflow-y:auto; line-height:1.4;">${dateItems}</div>`;
+            }
+            
             const row = tbody.insertRow();
             row.insertCell(0).innerText = item.name;
             row.insertCell(1).innerHTML = `<span class="stok-masuk">${masuk.toLocaleString()}</span>`;
             row.insertCell(2).innerHTML = `<span class="stok-keluar">${keluar.toLocaleString()}</span>`;
             row.insertCell(3).innerHTML = stok >= 0 ? `<b style="color:#059669;">${stok.toLocaleString()}</b>` : `<b style="color:#dc2626;">${stok.toLocaleString()}</b>`;
-            row.insertCell(4).innerHTML = `<span style="font-size:0.65rem;">📅 ${tanggalKeluarStr}</span>`;
+            row.insertCell(4).innerHTML = tanggalDisplay;
         });
     }
 
@@ -476,7 +498,7 @@
                 row.insertCell(0).innerText = tr.date;
                 row.insertCell(1).innerText = item.name;
                 row.insertCell(2).innerText = tr.quantityPcs.toLocaleString();
-                row.insertCell(3).innerText = tr.source === 'scan_url' ? 'Scan URL' : 'Manual';
+                row.insertCell(3).innerText = tr.source === 'scan_url' ? 'Scan URL' : (tr.source || 'Manual');
                 row.insertCell(4).innerText = tr.note || '-';
             }
         });
@@ -547,12 +569,12 @@
         window.print();
     });
 
-    // Export Excel (rekap + tanggal keluar)
+    // Export Excel (rekap + semua tanggal keluar)
     document.getElementById('exportRekapExcel').addEventListener('click', () => {
-        const wsData = [["Nama Barang", "Total Masuk (PCS)", "Total Keluar (PCS)", "Stok Akhir (PCS)", "Riwayat Tanggal Keluar (Terbaru)"]];
+        const wsData = [["Nama Barang", "Total Masuk (PCS)", "Total Keluar (PCS)", "Stok Akhir (PCS)", "Riwayat Tanggal Keluar (Semua)"]];
         items.forEach(item => {
-            const dates = getOutgoingDates(item.id);
-            const tanggalStr = dates.length ? dates.join(", ") : "Tidak ada";
+            const dates = getAllOutgoingDates(item.id);
+            const tanggalStr = dates.length ? dates.join(", ") : "Tidak ada riwayat keluar";
             wsData.push([item.name, getTotalMasuk(item.id), getTotalKeluar(item.id), getStok(item.id), tanggalStr]);
         });
         const ws = XLSX.utils.aoa_to_sheet(wsData);
@@ -590,13 +612,13 @@
 
     // Local storage
     function saveToLocal() {
-        localStorage.setItem('urlBarcodeWithDate', JSON.stringify(items.map(i => ({ id: i.id, name: i.name, uniqueCode: i.uniqueCode, qrDataURL: i.qrDataURL, outgoingURL: i.outgoingURL }))));
-        localStorage.setItem('urlBarcodeTransWithDate', JSON.stringify(transactions));
+        localStorage.setItem('urlBarcodeWithDateFull', JSON.stringify(items.map(i => ({ id: i.id, name: i.name, uniqueCode: i.uniqueCode, qrDataURL: i.qrDataURL, outgoingURL: i.outgoingURL }))));
+        localStorage.setItem('urlBarcodeTransWithDateFull', JSON.stringify(transactions));
     }
     
     async function loadFromLocal() {
-        const storedItems = localStorage.getItem('urlBarcodeWithDate');
-        const storedTrans = localStorage.getItem('urlBarcodeTransWithDate');
+        const storedItems = localStorage.getItem('urlBarcodeWithDateFull');
+        const storedTrans = localStorage.getItem('urlBarcodeTransWithDateFull');
         if (storedItems) items = JSON.parse(storedItems);
         if (storedTrans) transactions = JSON.parse(storedTrans);
         if (items.length === 0) {
@@ -607,7 +629,8 @@
                 { id: Date.now()+1, itemId: demo1.id, type: 'masuk', date: '2025-03-10', quantityPcs: 5000, unitRaw: '5 Box', note: 'Awal' },
                 { id: Date.now()+2, itemId: demo2.id, type: 'masuk', date: '2025-03-11', quantityPcs: 3000, unitRaw: '3 Box', note: 'Awal' },
                 { id: Date.now()+3, itemId: demo1.id, type: 'keluar', date: '2025-03-15', quantityPcs: 1, unitRaw: '1 PCS', note: 'Contoh keluar', source: 'demo' },
-                { id: Date.now()+4, itemId: demo1.id, type: 'keluar', date: '2025-03-16', quantityPcs: 1, unitRaw: '1 PCS', note: 'Contoh keluar lagi', source: 'demo' }
+                { id: Date.now()+4, itemId: demo1.id, type: 'keluar', date: '2025-03-16', quantityPcs: 2, unitRaw: '2 PCS', note: 'Contoh keluar banyak', source: 'demo' },
+                { id: Date.now()+5, itemId: demo2.id, type: 'keluar', date: '2025-03-17', quantityPcs: 1, unitRaw: '1 PCS', note: 'Keluar test', source: 'demo' }
             ];
             saveToLocal();
         }
