@@ -2,7 +2,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
-    <title>Barcode Inventory | Satuan & Konversi Unit | Dropdown Barang</title>
+    <title>Barcode Inventory | Transaksi per Tanggal + Stok Total</title>
     <!-- Library QR Code -->
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <!-- SheetJS untuk export -->
@@ -62,7 +62,7 @@
         }
         .input-group {
             flex: 1;
-            min-width: 150px;
+            min-width: 140px;
         }
         .input-group label {
             font-size: 0.7rem;
@@ -138,7 +138,7 @@
         @media (max-width: 640px) {
             .btn { width: 100%; justify-content: center; }
             .flex-between { flex-direction: column; align-items: stretch; }
-            th, td { font-size: 0.7rem; padding: 6px 4px; }
+            th, td { font-size: 0.65rem; padding: 6px 4px; }
         }
         .rekapan-card {
             background: linear-gradient(135deg, #fef9e3, #fef3c7);
@@ -159,9 +159,28 @@
             color: #6b7280;
             margin-top: 4px;
         }
-        .btn-smaller {
-            padding: 4px 8px;
-            font-size: 0.65rem;
+        .tab-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .tab-btn {
+            padding: 8px 16px;
+            border-radius: 40px;
+            background: #e2e8f0;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.8rem;
+        }
+        .tab-btn.active {
+            background: #2563eb;
+            color: white;
+        }
+        .transaction-table {
+            margin-top: 12px;
+            max-height: 400px;
+            overflow-y: auto;
         }
     </style>
 </head>
@@ -172,13 +191,13 @@
         <div class="flex-between">
             <div>
                 <h1>📦 Barcode Inventory Pro</h1>
-                <p>✨ Satuan & Konversi Unit • Dropdown Barang • Stok dalam PCS</p>
+                <p>✨ Transaksi per Tanggal • Stok Total • Satuan & Konversi Unit</p>
             </div>
-            <div class="badge" style="background:#ffffff30;">🔍 Scan = keluar otomatis (per pcs)</div>
+            <div class="badge" style="background:#ffffff30;">🔍 Scan = keluar otomatis</div>
         </div>
     </div>
 
-    <!-- Form Tambah Stok Barang Masuk dengan Unit -->
+    <!-- Form Tambah Stok Masuk -->
     <div class="card">
         <h3>➕ Tambah Stok Barang Masuk</h3>
         <div class="form-grid">
@@ -205,94 +224,101 @@
                 <div class="unit-hint" id="conversionHint">→ 0 pcs</div>
             </div>
             <div class="input-group">
-                <button class="btn btn-primary" id="addStockBtn" style="margin-top: 22px;">📦 Tambah Stok (PCS)</button>
+                <label>📅 Tanggal Masuk</label>
+                <input type="date" id="masukDate" value="">
+            </div>
+            <div class="input-group">
+                <button class="btn btn-primary" id="addStockBtn" style="margin-top: 22px;">📦 Tambah Stok Masuk</button>
             </div>
         </div>
         <div class="badge" style="background:#e6f0ff;">
-            🔑 <strong>Konversi Otomatis:</strong> 1 Box = 1000 pcs, 1 Display = 1000 pcs, 1 Dus = 500 pcs, 1 Karton = 2000 pcs.<br>
-            Stok disimpan dalam satuan PCS. Dropdown berisi daftar barang yang sudah ada.
+            🔑 <strong>Konversi:</strong> 1 Box/Display = 1000 pcs, 1 Dus = 500 pcs, 1 Karton = 2000 pcs. Stok total dihitung otomatis dari semua transaksi.
         </div>
     </div>
 
-    <!-- Tabel Detail Barang + Barcode + Download (Tanpa Kolom Aksi) -->
+    <!-- Tabel Daftar Barang & Stok Total -->
     <div class="card">
         <div class="flex-between">
-            <h3>📋 Daftar Barang & Barcode Tetap</h3>
-            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <button class="btn btn-success btn-sm" id="printAllBarcodeBtn">🖨️ Cetak Semua Barcode</button>
-            </div>
+            <h3>📋 Daftar Barang & Stok Total</h3>
+            <div><button class="btn btn-success btn-sm" id="printAllBarcodeBtn">🖨️ Cetak Semua Barcode</button></div>
         </div>
         <div style="overflow-x: auto;">
             <table id="barangTable">
                 <thead>
-                    <tr>
-                        <th>No</th><th>Nama Barang</th><th>Kode Unik</th><th>Satuan Dasar</th>
-                        <th>Total Masuk (PCS)</th><th>Total Keluar (PCS)</th><th>Stok (PCS)</th>
-                        <th>Barcode QR</th><th>Download</th>
-                    </tr>
+                    <tr><th>No</th><th>Nama Barang</th><th>Kode Unik</th><th>Stok Total (PCS)</th><th>Barcode QR</th><th>Download</th></tr>
                 </thead>
                 <tbody id="barangBody"></tbody>
             </table>
         </div>
-        <div class="info-footer" style="margin-top: 12px;">💡 Stok dalam satuan PCS. Setiap 1 kali scan keluar akan mengurangi 1 PCS. Barcode bersifat tetap per barang.</div>
     </div>
 
-    <!-- Scanner Kamera -->
+    <!-- Transaksi Masuk & Keluar per Tanggal (TAB) -->
+    <div class="card">
+        <div class="tab-buttons">
+            <div class="tab-btn active" data-tab="masuk">📥 Transaksi Masuk</div>
+            <div class="tab-btn" data-tab="keluar">📤 Transaksi Keluar</div>
+        </div>
+        <div id="masukTab" class="transaction-table">
+            <table style="width:100%">
+                <thead><tr><th>Tanggal</th><th>Nama Barang</th><th>Jumlah (PCS)</th><th>Unit Asal</th><th>Keterangan</th></tr></thead>
+                <tbody id="masukTableBody"></tbody>
+            </table>
+        </div>
+        <div id="keluarTab" style="display:none;" class="transaction-table">
+            <table style="width:100%">
+                <thead><tr><th>Tanggal</th><th>Nama Barang</th><th>Jumlah (PCS)</th><th>Sumber Scan</th><th>Keterangan</th></tr></thead>
+                <tbody id="keluarTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Scanner Kamera untuk Keluar -->
     <div class="scanner-area">
         <div class="flex-between">
-            <div><strong>📷 Scan Barcode QR (Kamera HP)</strong><br><span style="font-size:12px;">Scan 1x = keluar 1 PCS</span></div>
+            <div><strong>📷 Scan Barcode QR (Kamera HP)</strong><br><span style="font-size:12px;">Scan 1x = keluar 1 PCS (dicatat per tanggal hari ini)</span></div>
             <div>
                 <button id="startScanBtn" class="btn btn-primary btn-sm">▶ Mulai Scan</button>
                 <button id="stopScanBtn" class="btn btn-danger btn-sm">⏹ Stop</button>
             </div>
         </div>
         <div id="reader" style="width:100%; max-width:500px; margin:16px auto;"></div>
-        <div class="scan-result" id="scanInfo">
-            🔍 Hasil scan: <span id="scanMessage">—</span>
-        </div>
+        <div class="scan-result" id="scanInfo">🔍 Hasil scan: <span id="scanMessage">—</span></div>
     </div>
 
-    <!-- Tabel Rekap Stok di Bawah -->
+    <!-- Rekap Stok Total -->
     <div class="card rekapan-card">
         <div class="flex-between">
-            <h3>📊 REKAP AKHIR STOK BARANG (dalam PCS)</h3>
+            <h3>📊 REKAP STOK TOTAL (PCS)</h3>
             <button class="btn btn-secondary btn-sm" id="exportRekapExcel">📎 Export Rekap Excel</button>
         </div>
         <div style="overflow-x: auto;">
             <table id="rekapTable">
-                <thead><tr><th>Nama Barang</th><th>Total Masuk (PCS)</th><th>Total Keluar (PCS)</th><th>Stok Akhir (PCS)</th></tr></thead>
+                <thead><tr><th>Nama Barang</th><th>Total Masuk (PCS)</th><th>Total Keluar (PCS)</th><th>Stok Total (PCS)</th></tr></thead>
                 <tbody id="rekapBody"></tbody>
             </table>
         </div>
     </div>
-    <div class="info-footer">💡 Setiap barang memiliki SATU kode barcode tetap. Scan barcode OUT akan mengurangi stok 1 PCS.</div>
+    <div class="info-footer">💡 Setiap transaksi masuk/keluar dicatat per tanggal. Stok total = akumulasi masuk - akumulasi keluar. Scan keluar otomatis mengurangi stok.</div>
 </div>
-
 <div id="printArea" style="display: none;"></div>
 
 <script>
     // ==================== DATA MODEL ====================
-    // items: { id, name, uniqueCode, totalMasukPcs, totalKeluarPcs, qrDataURL, rawValueOUT, defaultUnit }
-    let items = [];
-
+    let items = []; // { id, name, uniqueCode, qrDataURL, rawValueOUT }
+    let transactions = []; // { id, itemId, type, date, quantityPcs, unitRaw, note, source }
+    
     // Konversi unit ke PCS
-    const unitToPcs = {
-        'pcs': 1,
-        'box': 1000,
-        'display': 1000,
-        'dus': 500,
-        'karton': 2000
-    };
-
+    const unitToPcs = { 'pcs': 1, 'box': 1000, 'display': 1000, 'dus': 500, 'karton': 2000 };
+    
     // Helper generate kode unik tetap
     function generateStableUniqueCodeFromName(name) {
         const base = name.toLowerCase().replace(/[^a-z0-9]/g, '');
         const timestamp = Date.now().toString().slice(-6);
         return `INV/${base.substring(0,10)}/${timestamp}`;
     }
-
+    
     // Generate QR Code
-    function generateQRCode(text, size=150) {
+    function generateQRCode(text, size=140) {
         return new Promise((resolve) => {
             const div = document.createElement('div');
             div.style.width = `${size}px`;
@@ -321,333 +347,334 @@
             }, 80);
         });
     }
-
+    
     // Membuat item baru
-    async function createNewItem(name, initialPcs) {
+    async function createNewItem(name) {
         const uniqueCode = generateStableUniqueCodeFromName(name + Date.now());
         const rawValueOUT = `OUT|${uniqueCode}|${name}`;
-        const qrDataURL = await generateQRCode(rawValueOUT, 150);
+        const qrDataURL = await generateQRCode(rawValueOUT, 140);
         return {
             id: Date.now() + Math.random(),
             name: name,
             uniqueCode: uniqueCode,
-            totalMasukPcs: initialPcs,
-            totalKeluarPcs: 0,
             qrDataURL: qrDataURL,
-            rawValueOUT: rawValueOUT,
-            defaultUnit: 'pcs'
+            rawValueOUT: rawValueOUT
         };
     }
-
-    // Proses scan keluar (kurangi 1 PCS)
+    
+    // Hitung total masuk per item
+    function getTotalMasuk(itemId) {
+        return transactions.filter(t => t.itemId === itemId && t.type === 'masuk').reduce((sum, t) => sum + t.quantityPcs, 0);
+    }
+    function getTotalKeluar(itemId) {
+        return transactions.filter(t => t.itemId === itemId && t.type === 'keluar').reduce((sum, t) => sum + t.quantityPcs, 0);
+    }
+    function getStokTotal(itemId) {
+        return getTotalMasuk(itemId) - getTotalKeluar(itemId);
+    }
+    
+    // Tambah transaksi masuk
+    async function addMasukTransaction(itemName, unitType, unitQuantity, date) {
+        if (!itemName) return false;
+        const conversion = unitToPcs[unitType] || 1;
+        const addedPcs = unitQuantity * conversion;
+        if (addedPcs <= 0) return false;
+        
+        let item = items.find(i => i.name.toLowerCase() === itemName.toLowerCase());
+        if (!item) {
+            item = await createNewItem(itemName);
+            items.push(item);
+        }
+        const transaction = {
+            id: Date.now() + Math.random(),
+            itemId: item.id,
+            type: 'masuk',
+            date: date,
+            quantityPcs: addedPcs,
+            unitRaw: `${unitQuantity} ${unitType}`,
+            note: `Tambah stok ${unitQuantity} ${unitType} = ${addedPcs} pcs`
+        };
+        transactions.push(transaction);
+        saveToLocal();
+        renderAll();
+        document.getElementById('scanMessage').innerHTML = `✅ Masuk: ${itemName} +${addedPcs} PCS (${unitQuantity} ${unitType}) tgl ${date}`;
+        return true;
+    }
+    
+    // Tambah transaksi keluar (biasanya dari scan, 1 PCS)
+    async function addKeluarTransactionByScan(itemId, date, source = 'scan_kamera') {
+        const item = items.find(i => i.id === itemId);
+        if (!item) return false;
+        const currentStok = getStokTotal(itemId);
+        if (currentStok <= 0) {
+            document.getElementById('scanMessage').innerHTML = `⚠️ Stok ${item.name} habis! Tidak bisa keluar.`;
+            return false;
+        }
+        const transaction = {
+            id: Date.now() + Math.random(),
+            itemId: itemId,
+            type: 'keluar',
+            date: date,
+            quantityPcs: 1,
+            unitRaw: '1 PCS (scan)',
+            note: `Scan keluar otomatis via kamera`
+        };
+        transactions.push(transaction);
+        saveToLocal();
+        renderAll();
+        document.getElementById('scanMessage').innerHTML = `✅ KELUAR: ${item.name} -1 PCS | Sisa stok: ${getStokTotal(itemId)} PCS`;
+        return true;
+    }
+    
+    // Proses scan barcode
     function processScanForOutgoing(scannedText) {
         if (!scannedText || !scannedText.includes('|')) {
-            document.getElementById('scanMessage').innerHTML = `❌ Format tidak valid: ${scannedText?.substring(0,50)}`;
+            document.getElementById('scanMessage').innerHTML = `❌ Format tidak valid`;
             return false;
         }
         const parts = scannedText.split('|');
-        if (parts.length < 3) {
-            document.getElementById('scanMessage').innerHTML = `❌ Format salah (TIPE|KODE|NAMA)`;
-            return false;
-        }
+        if (parts.length < 3) return false;
         const tipe = parts[0];
         const scannedCode = parts[1];
         const scannedName = parts[2];
-        
-        const itemIndex = items.findIndex(i => i.uniqueCode === scannedCode);
-        if (itemIndex === -1) {
+        const item = items.find(i => i.uniqueCode === scannedCode);
+        if (!item) {
             document.getElementById('scanMessage').innerHTML = `❌ Barang dengan kode ${scannedCode} tidak ditemukan.`;
             return false;
         }
-        
-        const item = items[itemIndex];
         if (tipe === 'OUT') {
-            if (item.totalMasukPcs - item.totalKeluarPcs <= 0) {
-                document.getElementById('scanMessage').innerHTML = `⚠️ Stok ${item.name} habis! Tidak bisa keluar.`;
-                return false;
-            }
-            item.totalKeluarPcs += 1; // keluar 1 pcs per scan
-            saveToLocal();
-            renderAllTables();
-            highlightRow(item.id);
-            document.getElementById('scanMessage').innerHTML = `✅ KELUAR: ${item.name} (-1 PCS) | Sisa: ${item.totalMasukPcs - item.totalKeluarPcs} PCS`;
+            const today = new Date().toISOString().slice(0,10);
+            addKeluarTransactionByScan(item.id, today, 'scan_kamera');
             return true;
         } else {
             document.getElementById('scanMessage').innerHTML = `ℹ️ Barcode ${tipe} untuk ${item.name} — hanya info.`;
             return false;
         }
     }
-
-    function highlightRow(itemId) {
-        const rows = document.querySelectorAll('#barangBody tr');
-        for (let row of rows) {
-            if (row.getAttribute('data-item-id') == itemId) {
-                row.classList.add('highlight');
-                setTimeout(() => row.classList.remove('highlight'), 800);
-                break;
-            }
-        }
-    }
-
-    // Tambah Stok Masuk dengan konversi unit
-    async function addStockIn(itemName, unitType, unitQuantity) {
-        if (!itemName) return false;
-        const conversion = unitToPcs[unitType] || 1;
-        const addedPcs = unitQuantity * conversion;
-        if (addedPcs <= 0) return false;
-        
-        const existingItem = items.find(i => i.name.toLowerCase() === itemName.toLowerCase());
-        if (existingItem) {
-            existingItem.totalMasukPcs += addedPcs;
-            saveToLocal();
-            renderAllTables();
-            highlightRow(existingItem.id);
-            document.getElementById('scanMessage').innerHTML = `✅ Stok ${existingItem.name} bertambah ${unitQuantity} ${unitType} (${addedPcs} PCS) | Total Masuk: ${existingItem.totalMasukPcs} PCS`;
-            return true;
-        } else {
-            const newItem = await createNewItem(itemName, addedPcs);
-            items.push(newItem);
-            saveToLocal();
-            renderAllTables();
-            document.getElementById('scanMessage').innerHTML = `🆕 Barang baru "${itemName}" dibuat. Stok awal: ${addedPcs} PCS (${unitQuantity} ${unitType})`;
-            return true;
-        }
-    }
-
-    // Update dropdown nama barang
-    function updateDropdown() {
-        const select = document.getElementById('itemNameSelect');
-        const currentValue = select.value;
-        select.innerHTML = '<option value="">-- Pilih barang yang sudah ada --</option>';
-        items.forEach(item => {
-            const option = document.createElement('option');
-            option.value = item.name;
-            option.textContent = `${item.name} (Stok: ${item.totalMasukPcs - item.totalKeluarPcs} PCS)`;
-            select.appendChild(option);
-        });
-        if (currentValue && items.some(i => i.name === currentValue)) select.value = currentValue;
-    }
-
-    // Render semua tabel
-    async function renderAllTables() {
-        renderRekap();
+    
+    // Render semua UI
+    async function renderAll() {
         renderBarangTable();
+        renderRekap();
+        renderTransactionsTable();
         updateDropdown();
         updateConversionHint();
     }
-
-    function renderRekap() {
-        const tbody = document.getElementById('rekapBody');
-        if (!items.length) {
-            tbody.innerHTML = '</tr><td colspan="4" style="text-align:center;">Belum ada数据</td></tr>';
-            return;
-        }
-        tbody.innerHTML = '';
-        items.forEach(item => {
-            const stokAkhir = item.totalMasukPcs - item.totalKeluarPcs;
-            const row = tbody.insertRow();
-            row.insertCell(0).innerText = item.name;
-            row.insertCell(1).innerHTML = `<span class="stok-masuk">${item.totalMasukPcs.toLocaleString()}</span>`;
-            row.insertCell(2).innerHTML = `<span class="stok-keluar">${item.totalKeluarPcs.toLocaleString()}</span>`;
-            row.insertCell(3).innerHTML = stokAkhir >= 0 ? `<b style="color:#059669;">${stokAkhir.toLocaleString()}</b>` : `<b style="color:#dc2626;">${stokAkhir.toLocaleString()} (minus)</b>`;
-        });
-    }
-
+    
     function renderBarangTable() {
         const tbody = document.getElementById('barangBody');
-        if (!items.length) {
-            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;">Kosong, tambah stok barang</td></tr>';
-            return;
-        }
+        if (!items.length) { tbody.innerHTML = '<tr><td colspan="6">Belum ada data</tr>'; return; }
         tbody.innerHTML = '';
         items.forEach((item, idx) => {
+            const stok = getStokTotal(item.id);
             const row = tbody.insertRow();
             row.setAttribute('data-item-id', item.id);
-            const stok = item.totalMasukPcs - item.totalKeluarPcs;
             row.insertCell(0).innerText = idx+1;
             row.insertCell(1).innerText = item.name;
-            row.insertCell(2).innerHTML = `<code style="background:#f1f5f9; padding:4px 6px; border-radius:10px; font-size:0.7rem;">${item.uniqueCode}</code>`;
-            row.insertCell(3).innerText = 'PCS (dasar)';
-            row.insertCell(4).innerHTML = `<span class="stok-masuk">${item.totalMasukPcs.toLocaleString()}</span>`;
-            row.insertCell(5).innerHTML = `<span class="stok-keluar">${item.totalKeluarPcs.toLocaleString()}</span>`;
-            row.insertCell(6).innerHTML = stok >= 0 ? `<b>${stok.toLocaleString()}</b>` : `<b style="color:red;">${stok.toLocaleString()}</b>`;
-            
-            // barcode
-            const imgCell = row.insertCell(7);
+            row.insertCell(2).innerHTML = `<code style="background:#f1f5f9; padding:4px 6px; border-radius:10px;">${item.uniqueCode}</code>`;
+            row.insertCell(3).innerHTML = stok >= 0 ? `<b class="stok-masuk">${stok.toLocaleString()}</b>` : `<b class="stok-keluar">${stok.toLocaleString()}</b>`;
+            const imgCell = row.insertCell(4);
             const img = document.createElement('img');
             img.src = item.qrDataURL;
             img.className = 'barcode-img';
-            img.title = 'Klik preview - Scan untuk keluar 1 PCS';
             img.onclick = () => {
                 const win = window.open();
-                win.document.write(`<html><head><title>Barcode ${item.name}</title></head><body style="display:flex;justify-content:center;align-items:center;min-height:100vh;"><div style="background:white;padding:20px;border-radius:28px;text-align:center;"><img src="${item.qrDataURL}" style="width:250px;"><p>${item.rawValueOUT}</p><small>Scan 1x = keluar 1 PCS</small></div></body></html>`);
+                win.document.write(`<html><body style="display:flex;justify-content:center;align-items:center;min-height:100vh;"><div><img src="${item.qrDataURL}" style="width:250px;"><p>${item.rawValueOUT}</p></div></body></html>`);
                 win.document.close();
             };
             imgCell.appendChild(img);
-            
-            // download buttons
-            const downloadCell = row.insertCell(8);
-            const btnGroup = document.createElement('div');
-            btnGroup.style.display = 'flex';
-            btnGroup.style.gap = '5px';
-            btnGroup.style.flexWrap = 'wrap';
-            const btnPng = document.createElement('button');
-            btnPng.innerText = 'PNG';
-            btnPng.className = 'btn-sm btn-secondary';
-            btnPng.style.padding = '4px 8px';
-            btnPng.onclick = () => downloadBarcodeAsImage(item.qrDataURL, item.name, 'png');
-            const btnJpg = document.createElement('button');
-            btnJpg.innerText = 'JPG';
-            btnJpg.className = 'btn-sm btn-secondary';
-            btnJpg.onclick = () => downloadBarcodeAsImage(item.qrDataURL, item.name, 'jpg');
-            const btnPdf = document.createElement('button');
-            btnPdf.innerText = 'PDF';
-            btnPdf.className = 'btn-sm btn-secondary';
-            btnPdf.onclick = () => downloadBarcodeAsPDF(item.qrDataURL, item.name, item.uniqueCode);
-            btnGroup.appendChild(btnPng);
-            btnGroup.appendChild(btnJpg);
-            btnGroup.appendChild(btnPdf);
-            downloadCell.appendChild(btnGroup);
+            const downCell = row.insertCell(5);
+            const btnGroup = document.createElement('div'); btnGroup.style.display = 'flex'; btnGroup.style.gap = '5px';
+            const pngBtn = document.createElement('button'); pngBtn.innerText = 'PNG'; pngBtn.className = 'btn-sm btn-secondary';
+            pngBtn.onclick = () => downloadBarcodeAsImage(item.qrDataURL, item.name, 'png');
+            const jpgBtn = document.createElement('button'); jpgBtn.innerText = 'JPG'; jpgBtn.className = 'btn-sm btn-secondary';
+            jpgBtn.onclick = () => downloadBarcodeAsImage(item.qrDataURL, item.name, 'jpg');
+            const pdfBtn = document.createElement('button'); pdfBtn.innerText = 'PDF'; pdfBtn.className = 'btn-sm btn-secondary';
+            pdfBtn.onclick = () => downloadBarcodeAsPDF(item.qrDataURL, item.name, item.uniqueCode);
+            btnGroup.appendChild(pngBtn); btnGroup.appendChild(jpgBtn); btnGroup.appendChild(pdfBtn);
+            downCell.appendChild(btnGroup);
         });
     }
-
+    
+    function renderRekap() {
+        const tbody = document.getElementById('rekapBody');
+        if (!items.length) { tbody.innerHTML = '<tr><td colspan="4">Kosong</tr>'; return; }
+        tbody.innerHTML = '';
+        items.forEach(item => {
+            const totalMasuk = getTotalMasuk(item.id);
+            const totalKeluar = getTotalKeluar(item.id);
+            const stok = totalMasuk - totalKeluar;
+            const row = tbody.insertRow();
+            row.insertCell(0).innerText = item.name;
+            row.insertCell(1).innerHTML = `<span class="stok-masuk">${totalMasuk.toLocaleString()}</span>`;
+            row.insertCell(2).innerHTML = `<span class="stok-keluar">${totalKeluar.toLocaleString()}</span>`;
+            row.insertCell(3).innerHTML = stok >= 0 ? `<b style="color:#059669;">${stok.toLocaleString()}</b>` : `<b style="color:#dc2626;">${stok.toLocaleString()}</b>`;
+        });
+    }
+    
+    function renderTransactionsTable() {
+        const masukBody = document.getElementById('masukTableBody');
+        const keluarBody = document.getElementById('keluarTableBody');
+        masukBody.innerHTML = '';
+        keluarBody.innerHTML = '';
+        const sorted = [...transactions].sort((a,b) => b.date.localeCompare(a.date));
+        for (let tr of sorted) {
+            const item = items.find(i => i.id === tr.itemId);
+            const itemName = item ? item.name : 'Hapus';
+            if (tr.type === 'masuk') {
+                const row = masukBody.insertRow();
+                row.insertCell(0).innerText = tr.date;
+                row.insertCell(1).innerText = itemName;
+                row.insertCell(2).innerText = tr.quantityPcs.toLocaleString();
+                row.insertCell(3).innerText = tr.unitRaw;
+                row.insertCell(4).innerText = tr.note || '-';
+            } else {
+                const row = keluarBody.insertRow();
+                row.insertCell(0).innerText = tr.date;
+                row.insertCell(1).innerText = itemName;
+                row.insertCell(2).innerText = tr.quantityPcs.toLocaleString();
+                row.insertCell(3).innerText = tr.source === 'scan_kamera' ? 'Scan Kamera' : 'Manual';
+                row.insertCell(4).innerText = tr.note || '-';
+            }
+        }
+    }
+    
+    function updateDropdown() {
+        const select = document.getElementById('itemNameSelect');
+        const currentVal = select.value;
+        select.innerHTML = '<option value="">-- Pilih barang --</option>';
+        items.forEach(item => {
+            const opt = document.createElement('option');
+            opt.value = item.name;
+            opt.textContent = `${item.name} (Stok: ${getStokTotal(item.id)} PCS)`;
+            select.appendChild(opt);
+        });
+        if (currentVal && items.some(i => i.name === currentVal)) select.value = currentVal;
+    }
+    
     function updateConversionHint() {
         const unit = document.getElementById('unitSelect').value;
         const qty = parseFloat(document.getElementById('unitQty').value) || 0;
         const pcs = qty * (unitToPcs[unit] || 1);
         document.getElementById('conversionHint').innerHTML = `→ ${pcs.toLocaleString()} pcs`;
     }
-
+    
     // Download functions
     async function downloadBarcodeAsImage(dataURL, fileName, format) {
         const link = document.createElement('a');
-        if (format === 'png') {
-            link.download = `${fileName}_barcode.png`;
-            link.href = dataURL;
-        } else if (format === 'jpg') {
-            const img = new Image();
-            img.src = dataURL;
-            await new Promise((resolve) => { img.onload = resolve; });
+        if (format === 'png') { link.download = `${fileName}_barcode.png`; link.href = dataURL; }
+        else if (format === 'jpg') {
+            const img = new Image(); img.src = dataURL;
+            await new Promise(r => { img.onload = r; });
             const canvas = document.createElement('canvas');
-            canvas.width = img.width;
-            canvas.height = img.height;
+            canvas.width = img.width; canvas.height = img.height;
             const ctx = canvas.getContext('2d');
-            ctx.fillStyle = 'white';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(img, 0, 0);
-            const jpgData = canvas.toDataURL('image/jpeg', 0.9);
-            link.download = `${fileName}_barcode.jpg`;
-            link.href = jpgData;
+            ctx.fillStyle = 'white'; ctx.fillRect(0,0,canvas.width,canvas.height);
+            ctx.drawImage(img,0,0);
+            link.download = `${fileName}_barcode.jpg`; link.href = canvas.toDataURL('image/jpeg',0.9);
         }
         link.click();
     }
-
     async function downloadBarcodeAsPDF(dataURL, name, code) {
         const { jsPDF } = window.jspdf;
-        const img = new Image();
-        img.src = dataURL;
-        await new Promise((resolve) => { img.onload = resolve; });
-        const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-        const imgWidth = 70;
-        const imgHeight = (img.height * imgWidth) / img.width;
-        const x = (210 - imgWidth) / 2;
-        pdf.setFontSize(14);
+        const img = new Image(); img.src = dataURL;
+        await new Promise(r => { img.onload = r; });
+        const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
+        const imgW = 70; const imgH = (img.height * imgW) / img.width;
         pdf.text(`Barcode: ${name}`, 105, 20, { align: 'center' });
-        pdf.setFontSize(9);
-        pdf.text(`Kode: ${code}`, 105, 30, { align: 'center' });
-        pdf.addImage(img, 'PNG', x, 40, imgWidth, imgHeight);
-        pdf.text(`Scan untuk keluar 1 PCS`, 105, 40 + imgHeight + 8, { align: 'center' });
+        pdf.addImage(img, 'PNG', (210-imgW)/2, 35, imgW, imgH);
+        pdf.text(`Kode: ${code}`, 105, 35+imgH+5, { align: 'center' });
         pdf.save(`${name}_barcode.pdf`);
     }
-
+    
     // Cetak semua barcode
     document.getElementById('printAllBarcodeBtn').addEventListener('click', () => {
         if (!items.length) { alert("Tidak ada barcode"); return; }
         const printDiv = document.getElementById('printArea');
-        let html = `<div style="text-align:center;"><h2>Daftar Barcode</h2><p>${new Date().toLocaleString()}</p></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:15px;">`;
+        let html = `<div style="text-align:center;"><h2>Barcode Inventory</h2><p>${new Date().toLocaleString()}</p></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:15px;">`;
         items.forEach(item => {
             html += `<div style="border:1px solid #aaa;border-radius:16px;padding:12px;text-align:center;">
                         <strong>${item.name}</strong><br>
-                        <small>${item.uniqueCode}</small><br>
-                        <img src="${item.qrDataURL}" width="120" style="margin:8px auto;"><br>
+                        <img src="${item.qrDataURL}" width="120"><br>
                         <span style="font-size:9px;">${item.rawValueOUT}</span>
-                        <div>Stok: ${(item.totalMasukPcs - item.totalKeluarPcs).toLocaleString()} PCS</div>
+                        <div>Stok: ${getStokTotal(item.id)} PCS</div>
                     </div>`;
         });
         html += `</div>`;
         printDiv.innerHTML = html;
         window.print();
     });
-
+    
     // Export Rekap Excel
     document.getElementById('exportRekapExcel').addEventListener('click', () => {
-        const wsData = [["Nama Barang", "Total Masuk (PCS)", "Total Keluar (PCS)", "Stok Akhir (PCS)"]];
+        const wsData = [["Nama Barang", "Total Masuk (PCS)", "Total Keluar (PCS)", "Stok Total (PCS)"]];
         items.forEach(item => {
-            wsData.push([item.name, item.totalMasukPcs, item.totalKeluarPcs, item.totalMasukPcs - item.totalKeluarPcs]);
+            wsData.push([item.name, getTotalMasuk(item.id), getTotalKeluar(item.id), getStokTotal(item.id)]);
         });
         const ws = XLSX.utils.aoa_to_sheet(wsData);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Rekap_Stok");
-        XLSX.writeFile(wb, `rekap_stok_${new Date().toISOString().slice(0,19)}.xlsx`);
+        XLSX.writeFile(wb, `rekap_stok_${new Date().toISOString().slice(0,10)}.xlsx`);
     });
-
-    // Event Tambah Stok
+    
+    // Event tambah stok masuk
     document.getElementById('addStockBtn').addEventListener('click', async () => {
-        let selectedName = document.getElementById('itemNameSelect').value;
-        const newNameInput = document.getElementById('newItemName').value.trim();
-        let finalName = selectedName;
-        if (newNameInput !== "") {
-            finalName = newNameInput;
-        }
-        if (!finalName) {
-            alert("Pilih atau ketik nama barang");
-            return;
-        }
+        let selected = document.getElementById('itemNameSelect').value;
+        const newName = document.getElementById('newItemName').value.trim();
+        let finalName = newName || selected;
+        if (!finalName) { alert("Pilih atau ketik nama barang"); return; }
         const unit = document.getElementById('unitSelect').value;
-        let unitQty = parseFloat(document.getElementById('unitQty').value);
-        if (isNaN(unitQty) || unitQty <= 0) unitQty = 1;
-        await addStockIn(finalName, unit, unitQty);
-        // reset input baru optional
+        let qty = parseFloat(document.getElementById('unitQty').value);
+        if (isNaN(qty) || qty <= 0) qty = 1;
+        let date = document.getElementById('masukDate').value;
+        if (!date) date = new Date().toISOString().slice(0,10);
+        await addMasukTransaction(finalName, unit, qty, date);
         document.getElementById('newItemName').value = '';
         document.getElementById('unitQty').value = '1';
     });
-
-    // update hint ketika unit atau qty berubah
-    document.getElementById('unitSelect').addEventListener('change', updateConversionHint);
-    document.getElementById('unitQty').addEventListener('input', updateConversionHint);
-
-    // Local Storage
+    
+    // Tab switching
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const tab = btn.getAttribute('data-tab');
+            document.getElementById('masukTab').style.display = tab === 'masuk' ? 'block' : 'none';
+            document.getElementById('keluarTab').style.display = tab === 'keluar' ? 'block' : 'none';
+        });
+    });
+    
+    // Local storage
     function saveToLocal() {
-        localStorage.setItem('barcodeUnitSystem', JSON.stringify(items.map(i => ({
-            id: i.id, name: i.name, uniqueCode: i.uniqueCode, totalMasukPcs: i.totalMasukPcs, totalKeluarPcs: i.totalKeluarPcs, qrDataURL: i.qrDataURL, rawValueOUT: i.rawValueOUT
-        }))));
+        localStorage.setItem('barcodeItemsTrans', JSON.stringify(items.map(i => ({ id: i.id, name: i.name, uniqueCode: i.uniqueCode, qrDataURL: i.qrDataURL, rawValueOUT: i.rawValueOUT }))));
+        localStorage.setItem('barcodeTransactions', JSON.stringify(transactions));
     }
-    
     function loadFromLocal() {
-        const stored = localStorage.getItem('barcodeUnitSystem');
-        if (stored && stored.length > 2) {
-            items = JSON.parse(stored);
-            renderAllTables();
-        } else {
-            initDemoData();
-        }
+        const storedItems = localStorage.getItem('barcodeItemsTrans');
+        const storedTrans = localStorage.getItem('barcodeTransactions');
+        if (storedItems) items = JSON.parse(storedItems);
+        if (storedTrans) transactions = JSON.parse(storedTrans);
+        if (items.length === 0) initDemoData();
+        else renderAll();
     }
-    
     async function initDemoData() {
-        const demo1 = await createNewItem("Speaker JBL", 5000);
-        const demo2 = await createNewItem("Mouse Logitech", 3000);
-        if (demo1) items.push(demo1);
-        if (demo2) items.push(demo2);
+        const demo1 = await createNewItem("Speaker JBL");
+        const demo2 = await createNewItem("Mouse Logitech");
+        items.push(demo1, demo2);
+        transactions.push({
+            id: Date.now()+1, itemId: demo1.id, type: 'masuk', date: '2025-01-15', quantityPcs: 5000, unitRaw: '5 Box', note: 'Initial stok'
+        },{
+            id: Date.now()+2, itemId: demo2.id, type: 'masuk', date: '2025-01-16', quantityPcs: 3000, unitRaw: '3 Box', note: 'Initial stok'
+        });
         saveToLocal();
-        renderAllTables();
+        renderAll();
     }
     
-    // Scanner
+    // Scanner camera
     let scanner = null;
     const startScan = document.getElementById('startScanBtn');
     const stopScan = document.getElementById('stopScanBtn');
     const readerDiv = document.getElementById('reader');
-    
     startScan.addEventListener('click', async () => {
         if (scanner) await stopScanHandler();
         readerDiv.innerHTML = "";
@@ -660,7 +687,6 @@
             document.getElementById('scanMessage').innerHTML = "📷 Kamera aktif, arahkan ke barcode QR...";
         } catch(e) { document.getElementById('scanMessage').innerHTML = "❌ Gagal kamera: "+e; }
     });
-    
     async function stopScanHandler() {
         if (scanner && scanner.isScanning) { await scanner.stop(); scanner.clear(); scanner = null; }
         readerDiv.innerHTML = "";
@@ -668,10 +694,12 @@
     }
     stopScan.addEventListener('click', stopScanHandler);
     
-    window.addEventListener('DOMContentLoaded', () => {
-        loadFromLocal();
-        updateConversionHint();
-    });
+    // Set default date today
+    document.getElementById('masukDate').value = new Date().toISOString().slice(0,10);
+    document.getElementById('unitSelect').addEventListener('change', updateConversionHint);
+    document.getElementById('unitQty').addEventListener('input', updateConversionHint);
+    updateConversionHint();
+    loadFromLocal();
 </script>
 </body>
 </html>
