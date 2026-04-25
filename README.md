@@ -2,16 +2,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
-    <title>Barcode Inventory | Izin Kamera + Portrait Android</title>
+    <title>Barcode Inventory | Auto Scan Cepat + Portrait</title>
     <!-- Library QR Code -->
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <!-- SheetJS untuk export -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
-    <!-- html2canvas untuk export PNG/JPG -->
+    <!-- html2canvas + jspdf -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <!-- jspdf untuk export PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <!-- Scanner kamera -->
+    <!-- Scanner kamera dengan performa tinggi -->
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <style>
         * {
@@ -27,9 +26,7 @@
             max-width: 500px;
             margin: 0 auto;
         }
-        .container {
-            width: 100%;
-        }
+        .container { width: 100%; }
         .card {
             background: white;
             border-radius: 24px;
@@ -45,13 +42,8 @@
             flex-wrap: wrap;
             gap: 10px;
         }
-        h1 {
-            font-size: 1.5rem;
-        }
-        h2, h3 {
-            font-size: 1.2rem;
-            margin-bottom: 8px;
-        }
+        h1 { font-size: 1.5rem; }
+        h3 { font-size: 1.2rem; margin-bottom: 8px; }
         .badge {
             background: #eef2ff;
             padding: 4px 12px;
@@ -64,9 +56,7 @@
             gap: 12px;
             margin-bottom: 12px;
         }
-        .input-group {
-            width: 100%;
-        }
+        .input-group { width: 100%; }
         .input-group label {
             font-size: 0.7rem;
             font-weight: 600;
@@ -120,10 +110,7 @@
             border-bottom: 1px solid #e2e8f0;
             vertical-align: middle;
         }
-        th {
-            background: #f8fafc;
-            font-weight: 700;
-        }
+        th { background: #f8fafc; font-weight: 700; }
         .stok-masuk { color: #059669; font-weight: bold; }
         .stok-keluar { color: #dc2626; }
         .barcode-img {
@@ -149,24 +136,14 @@
             font-size: 0.75rem;
             word-break: break-all;
         }
-        .rekapan-card {
-            background: linear-gradient(135deg, #fef9e3, #fef3c7);
-        }
+        .rekapan-card { background: linear-gradient(135deg, #fef9e3, #fef3c7); }
         .info-footer {
             text-align: center;
             font-size: 11px;
             color: #64748b;
             margin-top: 16px;
         }
-        .highlight {
-            background: #fef9c3;
-            transition: 0.3s;
-        }
-        .unit-hint {
-            font-size: 10px;
-            color: #6b7280;
-            margin-top: 4px;
-        }
+        .unit-hint { font-size: 10px; color: #6b7280; margin-top: 4px; }
         .tab-buttons {
             display: flex;
             gap: 10px;
@@ -182,39 +159,31 @@
             font-weight: 600;
             font-size: 0.8rem;
         }
-        .tab-btn.active {
-            background: #2563eb;
-            color: white;
-        }
-        .transaction-table {
-            max-height: 350px;
-            overflow-y: auto;
-        }
-        .btn-micro {
-            padding: 4px 8px;
-            font-size: 0.6rem;
-            border-radius: 30px;
-        }
-        .download-btns {
-            display: flex;
-            gap: 4px;
-            flex-wrap: wrap;
-        }
-        button, .tab-btn, .btn, .barcode-img {
-            cursor: pointer;
-            touch-action: manipulation;
-        }
-        input, select, button {
-            font-size: 16px;
-        }
-        /* Alert izin kamera */
+        .tab-btn.active { background: #2563eb; color: white; }
+        .transaction-table { max-height: 350px; overflow-y: auto; }
+        .btn-micro { padding: 4px 8px; font-size: 0.6rem; border-radius: 30px; }
+        .download-btns { display: flex; gap: 4px; flex-wrap: wrap; }
+        button, .tab-btn, .btn, .barcode-img { cursor: pointer; touch-action: manipulation; }
+        input, select, button { font-size: 16px; }
         .permission-prompt {
             background: #fef3c7;
             border-left: 4px solid #f59e0b;
-            padding: 12px;
+            padding: 10px;
             border-radius: 16px;
             margin-bottom: 12px;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
+        }
+        .scanner-status {
+            font-size: 0.7rem;
+            background: #1e293b;
+            padding: 6px 12px;
+            border-radius: 40px;
+            display: inline-block;
+        }
+        #reader video {
+            border-radius: 20px;
+            width: 100%;
+            max-width: 100%;
         }
     </style>
 </head>
@@ -223,11 +192,8 @@
     <!-- Header -->
     <div class="card" style="background: linear-gradient(135deg, #1e293b, #0f172a); color:white;">
         <div class="flex-between">
-            <div>
-                <h1>📦 Barcode Pro</h1>
-                <p style="font-size: 0.75rem;">Transaksi per Tanggal • Izin Kamera Aktif</p>
-            </div>
-            <div class="badge" style="background:#ffffff30;">📱 Portrait | Kamera</div>
+            <div><h1>📦 Barcode Pro</h1><p style="font-size: 0.7rem;">Auto Scan Cepat • Kamera Langsung Baca QR</p></div>
+            <div class="badge" style="background:#ffffff30;">⚡ Real-time Scan</div>
         </div>
     </div>
 
@@ -237,9 +203,7 @@
         <div class="form-grid">
             <div class="input-group">
                 <label>Nama Barang</label>
-                <select id="itemNameSelect">
-                    <option value="">-- Pilih barang --</option>
-                </select>
+                <select id="itemNameSelect"><option value="">-- Pilih barang --</option></select>
                 <input type="text" id="newItemName" placeholder="Atau ketik nama baru" style="margin-top: 8px;">
             </div>
             <div class="input-group">
@@ -265,73 +229,46 @@
         </div>
     </div>
 
-    <!-- Daftar Barang & Stok Total -->
+    <!-- Daftar Barang & Stok -->
     <div class="card">
-        <div class="flex-between">
-            <h3>📋 Stok Barang</h3>
-            <button class="btn-success btn-sm" id="printAllBarcodeBtn" style="width: auto;">🖨️ Cetak</button>
-        </div>
+        <div class="flex-between"><h3>📋 Stok Barang</h3><button class="btn-success btn-sm" id="printAllBarcodeBtn" style="width: auto;">🖨️ Cetak</button></div>
         <div class="table-wrapper">
-            <table id="barangTable">
-                <thead><tr><th>No</th><th>Nama</th><th>Stok (PCS)</th><th>Barcode</th><th>Download</th></tr></thead>
-                <tbody id="barangBody"></tbody>
-            </table>
+            <table id="barangTable"><thead><tr><th>No</th><th>Nama</th><th>Stok (PCS)</th><th>Barcode</th><th>Download</th></tr></thead><tbody id="barangBody"></tbody></table>
         </div>
     </div>
 
     <!-- Tab Transaksi -->
     <div class="card">
-        <div class="tab-buttons">
-            <div class="tab-btn active" data-tab="masuk">📥 Masuk</div>
-            <div class="tab-btn" data-tab="keluar">📤 Keluar</div>
-        </div>
-        <div id="masukTab" class="transaction-table">
-            <table style="width:100%">
-                <thead><tr><th>Tgl</th><th>Barang</th><th>Jml (PCS)</th><th>Unit</th></tr></thead>
-                <tbody id="masukTableBody"></tbody>
-            </table>
-        </div>
-        <div id="keluarTab" style="display:none;" class="transaction-table">
-            <table style="width:100%">
-                <thead><tr><th>Tgl</th><th>Barang</th><th>Jml (PCS)</th><th>Sumber</th></tr></thead>
-                <tbody id="keluarTableBody"></tbody>
-            </table>
-        </div>
+        <div class="tab-buttons"><div class="tab-btn active" data-tab="masuk">📥 Masuk</div><div class="tab-btn" data-tab="keluar">📤 Keluar</div></div>
+        <div id="masukTab" class="transaction-table"><table><thead><tr><th>Tgl</th><th>Barang</th><th>Jml (PCS)</th><th>Unit</th></tr></thead><tbody id="masukTableBody"></tbody></table></div>
+        <div id="keluarTab" style="display:none;" class="transaction-table"><table><thead><tr><th>Tgl</th><th>Barang</th><th>Jml (PCS)</th><th>Sumber</th></tr></thead><tbody id="keluarTableBody"></tbody></table></div>
     </div>
 
-    <!-- Scanner Kamera dengan Izin -->
+    <!-- Scanner Kamera - AUTO SCAN CEPAT (Begitu QR terlihat langsung terbaca) -->
     <div class="scanner-area">
         <div class="flex-between">
-            <strong>📷 Scan Barcode (keluar 1 PCS)</strong>
+            <strong>📷 Kamera Aktif (Auto Scan)</strong>
             <div style="display: flex; gap: 8px;">
-                <button id="startScanBtn" class="btn-primary btn-sm">▶ Minta Izin & Scan</button>
-                <button id="stopScanBtn" class="btn-danger btn-sm" disabled>⏹ Stop</button>
+                <button id="startScanBtn" class="btn-primary btn-sm">▶ Nyalakan Kamera</button>
+                <button id="stopScanBtn" class="btn-danger btn-sm" disabled>⏹ Matikan</button>
             </div>
         </div>
-        <div id="permissionStatus" class="permission-prompt" style="display: none; background:#334155; color:white; margin-top: 8px;"></div>
+        <div id="permissionStatus" class="permission-prompt" style="display: none;"></div>
         <div id="reader" style="width:100%; margin-top: 12px;"></div>
-        <div class="scan-result" id="scanInfo">🔍 Hasil scan: <span id="scanMessage">Tekan tombol scan dan izinkan kamera</span></div>
+        <div class="scan-result" id="scanInfo">🔍 Status: <span id="scanMessage">Tekan 'Nyalakan Kamera' dan izinkan akses. QR akan langsung terbaca otomatis.</span></div>
     </div>
 
-    <!-- Rekap Stok Total -->
+    <!-- Rekap Stok -->
     <div class="card rekapan-card">
-        <div class="flex-between">
-            <h3>📊 REKAP STOK TOTAL</h3>
-            <button class="btn-secondary btn-sm" id="exportRekapExcel" style="width: auto;">📎 Export</button>
-        </div>
-        <div class="table-wrapper">
-            <table id="rekapTable">
-                <thead><tr><th>Nama Barang</th><th>Masuk</th><th>Keluar</th><th>Stok</th></tr></thead>
-                <tbody id="rekapBody"></tbody>
-            </table>
-        </div>
+        <div class="flex-between"><h3>📊 REKAP STOK TOTAL</h3><button class="btn-secondary btn-sm" id="exportRekapExcel" style="width: auto;">📎 Export</button></div>
+        <div class="table-wrapper"><table id="rekapTable"><thead><tr><th>Nama Barang</th><th>Masuk</th><th>Keluar</th><th>Stok</th></tr></thead><tbody id="rekapBody"></tbody></table></div>
     </div>
-    <div class="info-footer">💡 Scan barcode OUT → otomatis kurangi stok 1 PCS & catat per tanggal hari ini</div>
+    <div class="info-footer">💡 Arahkan kamera ke barcode QR (format OUT|KODE|NAMA) → otomatis kurangi stok 1 PCS dalam 1 detik. Scan cepat tanpa tombol tambahan.</div>
 </div>
 <div id="printArea" style="display: none;"></div>
 
 <script>
-    // Data Model
+    // ==================== DATA & FUNGSI UTAMA ====================
     let items = [];
     let transactions = [];
     const unitToPcs = { 'pcs': 1, 'box': 1000, 'display': 1000, 'dus': 500, 'karton': 2000 };
@@ -382,15 +319,18 @@
         const item = items.find(i => i.id === itemId);
         if (!item) return false;
         if (getStok(itemId) <= 0) { document.getElementById('scanMessage').innerHTML = `⚠️ Stok ${item.name} habis!`; return false; }
-        transactions.push({ id: Date.now()+Math.random(), itemId: itemId, type: 'keluar', date, quantityPcs: 1, unitRaw: '1 PCS', note: 'Scan keluar', source: 'kamera' });
+        transactions.push({ id: Date.now()+Math.random(), itemId: itemId, type: 'keluar', date, quantityPcs: 1, unitRaw: '1 PCS', note: 'Auto scan keluar', source: 'kamera' });
         saveToLocal(); renderAll();
-        document.getElementById('scanMessage').innerHTML = `✅ Keluar 1 PCS ${item.name} | Sisa: ${getStok(itemId)} PCS`;
+        document.getElementById('scanMessage').innerHTML = `✅ [OTOMATIS] Keluar 1 PCS ${item.name} | Sisa: ${getStok(itemId)} PCS`;
         return true;
     }
 
-    function processScan(text) {
-        if (!text || !text.includes('|')) { document.getElementById('scanMessage').innerHTML = '❌ Format barcode salah'; return; }
-        const parts = text.split('|');
+    function processScan(decodedText) {
+        if (!decodedText || !decodedText.includes('|')) { 
+            document.getElementById('scanMessage').innerHTML = `❌ Barcode tidak dikenal: ${decodedText?.substring(0,40)}`; 
+            return; 
+        }
+        const parts = decodedText.split('|');
         if (parts.length < 3) return;
         const tipe = parts[0], code = parts[1];
         const item = items.find(i => i.uniqueCode === code);
@@ -398,9 +338,12 @@
         if (tipe === 'OUT') {
             const today = new Date().toISOString().slice(0,10);
             addKeluarByScan(item.id, today);
-        } else { document.getElementById('scanMessage').innerHTML = `ℹ️ Barcode ${tipe} untuk ${item.name}`; }
+        } else { 
+            document.getElementById('scanMessage').innerHTML = `ℹ️ Barcode ${tipe} untuk ${item.name} (tidak mengurangi stok)`;
+        }
     }
 
+    // Render semua komponen UI
     function renderAll() {
         renderBarangTable();
         renderRekap();
@@ -467,7 +410,7 @@
                 row.insertCell(0).innerText = tr.date;
                 row.insertCell(1).innerText = item.name;
                 row.insertCell(2).innerText = tr.quantityPcs.toLocaleString();
-                row.insertCell(3).innerText = tr.source === 'kamera' ? 'Scan Kamera' : 'Manual';
+                row.insertCell(3).innerText = tr.source === 'kamera' ? 'AutoScan' : 'Manual';
             }
         });
     }
@@ -511,80 +454,88 @@
         pdf.save(`${name}_barcode.pdf`);
     }
 
-    // ================ PERMISSION & SCANNER ================
-    let scanner = null;
-    let isScanning = false;
+    // ================ SCANNER DENGAN AUTO DETEKSI CEPAT ================
+    let html5QrCode = null;
+    let isScanningActive = false;
     const startBtn = document.getElementById('startScanBtn');
     const stopBtn = document.getElementById('stopScanBtn');
     const readerDiv = document.getElementById('reader');
     const permissionDiv = document.getElementById('permissionStatus');
 
-    async function requestCameraPermissionAndStart() {
-        // Tampilkan status meminta izin
+    async function startAutoScanner() {
         permissionDiv.style.display = 'block';
-        permissionDiv.innerHTML = '📷 Meminta akses kamera... Pastikan Anda mengizinkan.';
-        
+        permissionDiv.innerHTML = '📷 Meminta akses kamera (wajib izinkan) dan memulai auto-scan...';
         try {
-            // Cek dukungan browser
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                throw new Error('Browser tidak mendukung akses kamera. Gunakan Chrome/Edge di Android.');
+                throw new Error('Browser tidak mendukung kamera. Gunakan Chrome/Edge di Android.');
             }
-            // Minta izin kamera terlebih dahulu
             const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-            // Jika berhasil, stop stream sementara (karena nanti html5-qrcode akan memulai ulang)
-            stream.getTracks().forEach(track => track.stop());
-            permissionDiv.innerHTML = '✅ Izin kamera diberikan. Memulai scanner...';
-            setTimeout(() => { permissionDiv.style.display = 'none'; }, 2000);
+            stream.getTracks().forEach(track => track.stop()); // test izin berhasil
             
-            // Hentikan scanner jika sebelumnya aktif
-            if (scanner && isScanning) {
-                await scanner.stop();
-                scanner.clear();
-                scanner = null;
+            if (html5QrCode && isScanningActive) {
+                await html5QrCode.stop();
+                html5QrCode.clear();
+                html5QrCode = null;
             }
             readerDiv.innerHTML = "";
-            scanner = new Html5Qrcode("reader");
-            const config = { fps: 10, qrbox: { width: 280, height: 280 }, aspectRatio: 1.0 };
-            await scanner.start({ facingMode: "environment" }, config, 
-                (decodedText) => { processScan(decodedText); },
-                (errorMessage) => { /* ignore frame errors */ }
+            html5QrCode = new Html5Qrcode("reader");
+            const config = {
+                fps: 15,              // frame rate tinggi untuk deteksi cepat
+                qrbox: { width: 280, height: 280 },
+                aspectRatio: 1.0,
+                disableFlip: false,
+                experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+            };
+            await html5QrCode.start(
+                { facingMode: "environment" },
+                config,
+                (decodedText) => {
+                    // Ketika QR terdeteksi, langsung proses tanpa jeda
+                    processScan(decodedText);
+                    // Vibrasi singkat jika support (opsional)
+                    if (navigator.vibrate) navigator.vibrate(100);
+                },
+                (errorMsg) => { 
+                    // Abaikan error frame (biasa terjadi karena tidak ada QR)
+                    // Tapi tidak mengganggu
+                }
             );
-            isScanning = true;
+            isScanningActive = true;
             startBtn.disabled = true;
             stopBtn.disabled = false;
-            document.getElementById('scanMessage').innerHTML = "📷 Kamera aktif - arahkan ke barcode QR";
+            permissionDiv.innerHTML = '✅ Kamera aktif - Arahkan ke barcode QR, akan terbaca otomatis!';
+            setTimeout(() => permissionDiv.style.display = 'none', 2500);
+            document.getElementById('scanMessage').innerHTML = "📷 Kamera menyala - QR akan langsung terbaca saat terlihat";
         } catch (err) {
             console.error(err);
-            let errorMsg = err.message;
-            if (err.name === 'NotAllowedError') errorMsg = 'Izin kamera ditolak. Buka pengaturan HP dan izinkan kamera untuk aplikasi browser ini.';
-            else if (err.name === 'NotFoundError') errorMsg = 'Tidak menemukan kamera di perangkat ini.';
-            permissionDiv.innerHTML = `❌ Gagal akses kamera: ${errorMsg}`;
+            let errMsg = err.message;
+            if (err.name === 'NotAllowedError') errMsg = 'Izin kamera ditolak. Buka pengaturan dan izinkan kamera untuk browser ini.';
+            permissionDiv.innerHTML = `❌ Gagal: ${errMsg}`;
             permissionDiv.style.background = '#dc2626';
             permissionDiv.style.color = 'white';
-            setTimeout(() => { permissionDiv.style.display = 'block'; }, 100);
             startBtn.disabled = false;
             stopBtn.disabled = true;
-            isScanning = false;
+            isScanningActive = false;
         }
     }
 
     async function stopScanner() {
-        if (scanner && isScanning) {
+        if (html5QrCode && isScanningActive) {
             try {
-                await scanner.stop();
-                scanner.clear();
+                await html5QrCode.stop();
+                html5QrCode.clear();
             } catch(e) {}
-            scanner = null;
-            isScanning = false;
+            html5QrCode = null;
+            isScanningActive = false;
         }
         readerDiv.innerHTML = "";
         startBtn.disabled = false;
         stopBtn.disabled = true;
-        document.getElementById('scanMessage').innerHTML = "⏹ Scanner dihentikan. Tekan 'Minta Izin & Scan' untuk memulai ulang.";
+        document.getElementById('scanMessage').innerHTML = "⏹ Kamera dimatikan. Tekan 'Nyalakan Kamera' untuk memulai auto-scan.";
         permissionDiv.style.display = 'none';
     }
 
-    startBtn.addEventListener('click', requestCameraPermissionAndStart);
+    startBtn.addEventListener('click', startAutoScanner);
     stopBtn.addEventListener('click', stopScanner);
 
     // Cetak & Export
@@ -637,12 +588,12 @@
 
     // Local storage
     function saveToLocal() {
-        localStorage.setItem('portraitItemsCamera', JSON.stringify(items.map(i => ({ id: i.id, name: i.name, uniqueCode: i.uniqueCode, qrDataURL: i.qrDataURL, rawValueOUT: i.rawValueOUT }))));
-        localStorage.setItem('portraitTransactionsCamera', JSON.stringify(transactions));
+        localStorage.setItem('autoScanInventory', JSON.stringify(items.map(i => ({ id: i.id, name: i.name, uniqueCode: i.uniqueCode, qrDataURL: i.qrDataURL, rawValueOUT: i.rawValueOUT }))));
+        localStorage.setItem('autoScanTransactions', JSON.stringify(transactions));
     }
     async function loadFromLocal() {
-        const storedItems = localStorage.getItem('portraitItemsCamera');
-        const storedTrans = localStorage.getItem('portraitTransactionsCamera');
+        const storedItems = localStorage.getItem('autoScanInventory');
+        const storedTrans = localStorage.getItem('autoScanTransactions');
         if (storedItems) items = JSON.parse(storedItems);
         if (storedTrans) transactions = JSON.parse(storedTrans);
         if (items.length === 0) {
