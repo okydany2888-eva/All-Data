@@ -2,7 +2,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
-    <title>Barcode Inventory | Portrait Android</title>
+    <title>Barcode Inventory | Izin Kamera + Portrait Android</title>
     <!-- Library QR Code -->
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <!-- SheetJS untuk export -->
@@ -12,7 +12,7 @@
     <!-- jspdf untuk export PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <!-- Scanner kamera -->
-    <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -24,14 +24,12 @@
             font-family: system-ui, -apple-system, 'Segoe UI', 'Roboto', sans-serif;
             background: #f1f5f9;
             padding: 12px;
-            /* mode portrait - lebar terbatas */
             max-width: 500px;
             margin: 0 auto;
         }
         .container {
             width: 100%;
         }
-        /* Semua card dengan padding lebih nyaman untuk portrait */
         .card {
             background: white;
             border-radius: 24px;
@@ -60,7 +58,6 @@
             border-radius: 40px;
             font-size: 0.7rem;
         }
-        /* Form grid menjadi stack vertical di portrait */
         .form-grid {
             display: flex;
             flex-direction: column;
@@ -105,7 +102,6 @@
         .btn-danger { background: #dc2626; color: white; }
         .btn-secondary { background: #475569; color: white; }
         .btn-sm { padding: 8px 12px; font-size: 0.7rem; width: auto; }
-        /* Tabel dengan overflow horizontal jika perlu, tapi di portrait usahakan compact */
         .table-wrapper {
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
@@ -194,52 +190,48 @@
             max-height: 350px;
             overflow-y: auto;
         }
-        /* Tombol grup aksi dalam baris tabel compact */
-        .btn-group-inline {
-            display: flex;
-            gap: 4px;
-            flex-wrap: wrap;
-        }
         .btn-micro {
             padding: 4px 8px;
             font-size: 0.6rem;
             border-radius: 30px;
         }
-        /* Scroll halus */
-        .transaction-table::-webkit-scrollbar {
-            width: 4px;
-            height: 4px;
-        }
-        /* Hilangkan tombol download agar tidak terlalu besar */
         .download-btns {
             display: flex;
             gap: 4px;
             flex-wrap: wrap;
         }
-        /* Touch friendly */
         button, .tab-btn, .btn, .barcode-img {
             cursor: pointer;
             touch-action: manipulation;
         }
         input, select, button {
-            font-size: 16px; /* mencegah zoom otomatis pada iOS/Android */
+            font-size: 16px;
+        }
+        /* Alert izin kamera */
+        .permission-prompt {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 12px;
+            border-radius: 16px;
+            margin-bottom: 12px;
+            font-size: 0.75rem;
         }
     </style>
 </head>
 <body>
 <div class="container">
-    <!-- Header Portrait -->
+    <!-- Header -->
     <div class="card" style="background: linear-gradient(135deg, #1e293b, #0f172a); color:white;">
         <div class="flex-between">
             <div>
                 <h1>📦 Barcode Pro</h1>
-                <p style="font-size: 0.75rem;">Transaksi per Tanggal • Stok Total</p>
+                <p style="font-size: 0.75rem;">Transaksi per Tanggal • Izin Kamera Aktif</p>
             </div>
-            <div class="badge" style="background:#ffffff30;">📱 Portrait Mode</div>
+            <div class="badge" style="background:#ffffff30;">📱 Portrait | Kamera</div>
         </div>
     </div>
 
-    <!-- Form Tambah Stok Masuk (Vertical) -->
+    <!-- Form Tambah Stok Masuk -->
     <div class="card">
         <h3>➕ Tambah Stok Masuk</h3>
         <div class="form-grid">
@@ -277,7 +269,7 @@
     <div class="card">
         <div class="flex-between">
             <h3>📋 Stok Barang</h3>
-            <button class="btn-success btn-sm" id="printAllBarcodeBtn" style="width: auto;">🖨️ Cetak Barcode</button>
+            <button class="btn-success btn-sm" id="printAllBarcodeBtn" style="width: auto;">🖨️ Cetak</button>
         </div>
         <div class="table-wrapper">
             <table id="barangTable">
@@ -287,7 +279,7 @@
         </div>
     </div>
 
-    <!-- Tab Transaksi Masuk/Keluar -->
+    <!-- Tab Transaksi -->
     <div class="card">
         <div class="tab-buttons">
             <div class="tab-btn active" data-tab="masuk">📥 Masuk</div>
@@ -307,17 +299,18 @@
         </div>
     </div>
 
-    <!-- Scanner Kamera untuk Keluar -->
+    <!-- Scanner Kamera dengan Izin -->
     <div class="scanner-area">
         <div class="flex-between">
             <strong>📷 Scan Barcode (keluar 1 PCS)</strong>
             <div style="display: flex; gap: 8px;">
-                <button id="startScanBtn" class="btn-primary btn-sm">▶ Scan</button>
-                <button id="stopScanBtn" class="btn-danger btn-sm">⏹ Stop</button>
+                <button id="startScanBtn" class="btn-primary btn-sm">▶ Minta Izin & Scan</button>
+                <button id="stopScanBtn" class="btn-danger btn-sm" disabled>⏹ Stop</button>
             </div>
         </div>
+        <div id="permissionStatus" class="permission-prompt" style="display: none; background:#334155; color:white; margin-top: 8px;"></div>
         <div id="reader" style="width:100%; margin-top: 12px;"></div>
-        <div class="scan-result" id="scanInfo">🔍 Hasil: <span id="scanMessage">—</span></div>
+        <div class="scan-result" id="scanInfo">🔍 Hasil scan: <span id="scanMessage">Tekan tombol scan dan izinkan kamera</span></div>
     </div>
 
     <!-- Rekap Stok Total -->
@@ -396,7 +389,7 @@
     }
 
     function processScan(text) {
-        if (!text || !text.includes('|')) { document.getElementById('scanMessage').innerHTML = '❌ Format salah'; return; }
+        if (!text || !text.includes('|')) { document.getElementById('scanMessage').innerHTML = '❌ Format barcode salah'; return; }
         const parts = text.split('|');
         if (parts.length < 3) return;
         const tipe = parts[0], code = parts[1];
@@ -418,7 +411,7 @@
 
     function renderBarangTable() {
         const tbody = document.getElementById('barangBody');
-        if (!items.length) { tbody.innerHTML = '<tr><td colspan="5">Kosong</td></table>'; return; }
+        if (!items.length) { tbody.innerHTML = '<tr><td colspan="5">Kosong</td></tr>'; return; }
         tbody.innerHTML = '';
         items.forEach((item, idx) => {
             const stok = getStok(item.id);
@@ -474,7 +467,7 @@
                 row.insertCell(0).innerText = tr.date;
                 row.insertCell(1).innerText = item.name;
                 row.insertCell(2).innerText = tr.quantityPcs.toLocaleString();
-                row.insertCell(3).innerText = tr.source === 'kamera' ? 'Scan' : 'Manual';
+                row.insertCell(3).innerText = tr.source === 'kamera' ? 'Scan Kamera' : 'Manual';
             }
         });
     }
@@ -518,6 +511,83 @@
         pdf.save(`${name}_barcode.pdf`);
     }
 
+    // ================ PERMISSION & SCANNER ================
+    let scanner = null;
+    let isScanning = false;
+    const startBtn = document.getElementById('startScanBtn');
+    const stopBtn = document.getElementById('stopScanBtn');
+    const readerDiv = document.getElementById('reader');
+    const permissionDiv = document.getElementById('permissionStatus');
+
+    async function requestCameraPermissionAndStart() {
+        // Tampilkan status meminta izin
+        permissionDiv.style.display = 'block';
+        permissionDiv.innerHTML = '📷 Meminta akses kamera... Pastikan Anda mengizinkan.';
+        
+        try {
+            // Cek dukungan browser
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                throw new Error('Browser tidak mendukung akses kamera. Gunakan Chrome/Edge di Android.');
+            }
+            // Minta izin kamera terlebih dahulu
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+            // Jika berhasil, stop stream sementara (karena nanti html5-qrcode akan memulai ulang)
+            stream.getTracks().forEach(track => track.stop());
+            permissionDiv.innerHTML = '✅ Izin kamera diberikan. Memulai scanner...';
+            setTimeout(() => { permissionDiv.style.display = 'none'; }, 2000);
+            
+            // Hentikan scanner jika sebelumnya aktif
+            if (scanner && isScanning) {
+                await scanner.stop();
+                scanner.clear();
+                scanner = null;
+            }
+            readerDiv.innerHTML = "";
+            scanner = new Html5Qrcode("reader");
+            const config = { fps: 10, qrbox: { width: 280, height: 280 }, aspectRatio: 1.0 };
+            await scanner.start({ facingMode: "environment" }, config, 
+                (decodedText) => { processScan(decodedText); },
+                (errorMessage) => { /* ignore frame errors */ }
+            );
+            isScanning = true;
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            document.getElementById('scanMessage').innerHTML = "📷 Kamera aktif - arahkan ke barcode QR";
+        } catch (err) {
+            console.error(err);
+            let errorMsg = err.message;
+            if (err.name === 'NotAllowedError') errorMsg = 'Izin kamera ditolak. Buka pengaturan HP dan izinkan kamera untuk aplikasi browser ini.';
+            else if (err.name === 'NotFoundError') errorMsg = 'Tidak menemukan kamera di perangkat ini.';
+            permissionDiv.innerHTML = `❌ Gagal akses kamera: ${errorMsg}`;
+            permissionDiv.style.background = '#dc2626';
+            permissionDiv.style.color = 'white';
+            setTimeout(() => { permissionDiv.style.display = 'block'; }, 100);
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            isScanning = false;
+        }
+    }
+
+    async function stopScanner() {
+        if (scanner && isScanning) {
+            try {
+                await scanner.stop();
+                scanner.clear();
+            } catch(e) {}
+            scanner = null;
+            isScanning = false;
+        }
+        readerDiv.innerHTML = "";
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+        document.getElementById('scanMessage').innerHTML = "⏹ Scanner dihentikan. Tekan 'Minta Izin & Scan' untuk memulai ulang.";
+        permissionDiv.style.display = 'none';
+    }
+
+    startBtn.addEventListener('click', requestCameraPermissionAndStart);
+    stopBtn.addEventListener('click', stopScanner);
+
+    // Cetak & Export
     document.getElementById('printAllBarcodeBtn').addEventListener('click', () => {
         if (!items.length) { alert("Tidak ada barcode"); return; }
         const printDiv = document.getElementById('printArea');
@@ -567,12 +637,12 @@
 
     // Local storage
     function saveToLocal() {
-        localStorage.setItem('portraitItems', JSON.stringify(items.map(i => ({ id: i.id, name: i.name, uniqueCode: i.uniqueCode, qrDataURL: i.qrDataURL, rawValueOUT: i.rawValueOUT }))));
-        localStorage.setItem('portraitTransactions', JSON.stringify(transactions));
+        localStorage.setItem('portraitItemsCamera', JSON.stringify(items.map(i => ({ id: i.id, name: i.name, uniqueCode: i.uniqueCode, qrDataURL: i.qrDataURL, rawValueOUT: i.rawValueOUT }))));
+        localStorage.setItem('portraitTransactionsCamera', JSON.stringify(transactions));
     }
     async function loadFromLocal() {
-        const storedItems = localStorage.getItem('portraitItems');
-        const storedTrans = localStorage.getItem('portraitTransactions');
+        const storedItems = localStorage.getItem('portraitItemsCamera');
+        const storedTrans = localStorage.getItem('portraitTransactionsCamera');
         if (storedItems) items = JSON.parse(storedItems);
         if (storedTrans) transactions = JSON.parse(storedTrans);
         if (items.length === 0) {
@@ -587,28 +657,6 @@
         }
         renderAll();
     }
-
-    // Scanner camera
-    let scanner = null;
-    const startScan = document.getElementById('startScanBtn');
-    const stopScan = document.getElementById('stopScanBtn');
-    const readerDiv = document.getElementById('reader');
-    startScan.addEventListener('click', async () => {
-        if (scanner) await stopScanHandler();
-        readerDiv.innerHTML = "";
-        scanner = new Html5Qrcode("reader");
-        try {
-            await scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, 
-                (decoded) => processScan(decoded), (err) => {});
-            document.getElementById('scanMessage').innerHTML = "📷 Kamera aktif, arahkan ke QR";
-        } catch(e) { document.getElementById('scanMessage').innerHTML = "❌ Gagal kamera: "+e; }
-    });
-    async function stopScanHandler() {
-        if (scanner && scanner.isScanning) { await scanner.stop(); scanner.clear(); scanner = null; }
-        readerDiv.innerHTML = "";
-        document.getElementById('scanMessage').innerHTML = "⏹ Scanner stop";
-    }
-    stopScan.addEventListener('click', stopScanHandler);
 
     document.getElementById('masukDate').value = new Date().toISOString().slice(0,10);
     document.getElementById('unitSelect').addEventListener('change', updateConversion);
