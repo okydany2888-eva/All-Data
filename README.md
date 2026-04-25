@@ -2,12 +2,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
-    <title>Barcode Inventory | Rekap Stok + Tanggal Keluar</title>
-    <!-- QR Code Library -->
+    <title>Barcode Inventory | Smart URL Barcode + Auto Reduce Stock</title>
+    <!-- Library QR Code -->
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-    <!-- SheetJS -->
+    <!-- SheetJS untuk export -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
-    <!-- html2canvas & jsPDF -->
+    <!-- html2canvas + jspdf -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
@@ -112,12 +112,28 @@
         .stok-masuk { color: #059669; font-weight: bold; }
         .stok-keluar { color: #dc2626; }
         .barcode-img {
-            width: 55px;
-            height: 55px;
+            width: 65px;
+            height: 65px;
             cursor: pointer;
             background: white;
             border-radius: 12px;
             border: 1px solid #cbd5e1;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .scanner-area {
+            background: #0f172a;
+            border-radius: 24px;
+            padding: 16px;
+            color: white;
+        }
+        .scan-result {
+            background: #1e293b;
+            border-radius: 16px;
+            padding: 10px;
+            margin-top: 12px;
+            font-family: monospace;
+            font-size: 0.75rem;
+            word-break: break-all;
         }
         .rekapan-card { background: linear-gradient(135deg, #fef9e3, #fef3c7); }
         .info-footer {
@@ -155,26 +171,20 @@
             font-family: monospace;
             margin-top: 8px;
         }
-        .date-list {
-            font-size: 0.65rem;
-            max-height: 60px;
-            overflow-y: auto;
-            display: block;
-        }
     </style>
 </head>
 <body>
 <div class="container">
     <div class="card" style="background: linear-gradient(135deg, #1e293b, #0f172a); color:white;">
         <div class="flex-between">
-            <div><h1>📦 Barcode Pro</h1><p style="font-size: 0.7rem;">Rekap Stok + Tanggal Keluar (Detail)</p></div>
-            <div class="badge" style="background:#ffffff30;">📅 Riwayat tanggal setiap keluar</div>
+            <div><h1>📦 Smart Barcode</h1><p style="font-size: 0.7rem;">URL Barcode • Auto Redirect & Kurangi Stok</p></div>
+            <div class="badge" style="background:#ffffff30;">🌐 Scan → Buka Web → Stock -1</div>
         </div>
     </div>
 
     <!-- Form Tambah Stok Masuk -->
     <div class="card">
-        <h3>➕ Tambah Stok Masuk</h3>
+        <h3>➕ Tambah Barang / Stok</h3>
         <div class="form-grid">
             <div class="input-group">
                 <label>Nama Barang</label>
@@ -202,62 +212,55 @@
             </div>
             <button class="btn btn-primary" id="addStockBtn">📦 Tambah Stok Masuk</button>
         </div>
-        <div class="url-preview">💡 Barcode berisi URL untuk keluar otomatis. Scan dengan HP → buka halaman → stok berkurang & tercatat tanggal.</div>
+        <div class="url-preview" id="urlExamplePreview">💡 Barcode akan berisi URL: https://domain.com/out?id=XXX&name=Barang (scan dengan kamera HP akan langsung membuka halaman & mengurangi stok)</div>
     </div>
 
-    <!-- Daftar Barang & Barcode -->
+    <!-- Daftar Barang & Barcode URL -->
     <div class="card">
-        <div class="flex-between"><h3>📋 Barang & Barcode</h3><button class="btn-success btn-sm" id="printAllBarcodeBtn" style="width: auto;">🖨️ Cetak</button></div>
-        <div class="table-wrapper"><table id="barangTable"><thead><tr><th>No</th><th>Nama</th><th>Stok (PCS)</th><th>QR Barcode</th><th>Download</th></tr></thead><tbody id="barangBody"></tbody></table></div>
-    </div>
-
-    <!-- TAB Transaksi (dengan tanggal keluar detail) -->
-    <div class="card">
-        <div class="tab-buttons"><div class="tab-btn active" data-tab="masuk">📥 Riwayat Masuk</div><div class="tab-btn" data-tab="keluar">📤 Riwayat Keluar (dengan Tanggal)</div></div>
-        <div id="masukTab" class="transaction-table"><table style="width:100%"><thead><tr><th>Tgl Masuk</th><th>Barang</th><th>Jml (PCS)</th><th>Unit</th></table></thead><tbody id="masukTableBody"></tbody></table></div>
-        <div id="keluarTab" style="display:none;" class="transaction-table"><table style="width:100%"><thead><tr><th>Tgl Keluar</th><th>Barang</th><th>Jml (PCS)</th><th>Sumber</th><th>Keterangan</th></tr></thead><tbody id="keluarTableBody"></tbody></table></div>
-    </div>
-
-    <!-- REKAP STOK + DAFTAR TANGGAL KELUAR (LENGKAP) -->
-    <div class="card rekapan-card">
-        <div class="flex-between"><h3>📊 REKAP STOK & DAFTAR TANGGAL KELUAR</h3><button class="btn-secondary btn-sm" id="exportRekapExcel">📎 Export Excel</button></div>
+        <div class="flex-between"><h3>📋 Barang & Barcode (URL)</h3><button class="btn-success btn-sm" id="printAllBarcodeBtn" style="width: auto;">🖨️ Cetak</button></div>
         <div class="table-wrapper">
-            <table id="rekapTable">
-                <thead>
-                    <tr>
-                        <th>Nama Barang</th>
-                        <th>Total Masuk</th>
-                        <th>Total Keluar</th>
-                        <th>Stok Akhir</th>
-                        <th>Tanggal Keluar (Riwayat Lengkap)</th>
-                    </tr>
-                </thead>
-                <tbody id="rekapBody"></tbody>
+            <table id="barangTable">
+                <thead><tr><th>No</th><th>Nama Barang</th><th>Stok (PCS)</th><th>QR Code (URL)</th><th>Download</th></tr></thead>
+                <tbody id="barangBody"></tbody>
             </table>
         </div>
-        <div class="info-footer" style="margin-top:8px;">📅 Kolom Tanggal Keluar menampilkan SEMUA tanggal transaksi keluar (dari tertua hingga terbaru) untuk setiap barang.</div>
     </div>
-    <div class="info-footer">✨ Setiap scan barcode (URL) akan otomatis mencatat tanggal keluar hari ini dan mengurangi stok.</div>
+
+    <!-- Tab Transaksi -->
+    <div class="card">
+        <div class="tab-buttons"><div class="tab-btn active" data-tab="masuk">📥 Masuk</div><div class="tab-btn" data-tab="keluar">📤 Keluar</div></div>
+        <div id="masukTab" class="transaction-table"><table style="width:100%"><thead><tr><th>Tgl</th><th>Barang</th><th>Jml (PCS)</th><th>Unit</th></tr></thead><tbody id="masukTableBody"></tbody></table></div>
+        <div id="keluarTab" style="display:none;" class="transaction-table"><table style="width:100%"><thead><tr><th>Tgl</th><th>Barang</th><th>Jml (PCS)</th><th>Sumber</th></tr></thead><tbody id="keluarTableBody"></tbody></table></div>
+    </div>
+
+    <!-- Rekap Stok -->
+    <div class="card rekapan-card">
+        <div class="flex-between"><h3>📊 REKAP STOK TOTAL</h3><button class="btn-secondary btn-sm" id="exportRekapExcel">📎 Export</button></div>
+        <div class="table-wrapper"><table id="rekapTable"><thead><tr><th>Nama Barang</th><th>Masuk</th><th>Keluar</th><th>Stok</th></tr></thead><tbody id="rekapBody"></tbody></table></div>
+    </div>
+    <div class="info-footer">🌐 Setiap barcode berisi URL ke halaman ini dengan parameter action=out&id=... Saat discan pemindai HP → terbuka browser → stok otomatis berkurang 1.</div>
 </div>
 <div id="printArea" style="display: none;"></div>
 
 <script>
-    // ==================== DATA MODEL ====================
+    // ==================== DATA & KONFIGURASI ====================
     let items = [];
     let transactions = [];
     const unitToPcs = { 'pcs': 1, 'box': 1000, 'display': 1000, 'dus': 500, 'karton': 2000 };
+    
+    // Base URL aplikasi ini (dinamis menggunakan lokasi saat ini)
     const BASE_URL = window.location.origin + window.location.pathname;
-
-    // Generate URL untuk keluar
+    
+    // Fungsi membuat URL untuk proses barang keluar (otomatis mengurangi stok)
     function generateOutgoingURL(itemId, itemName) {
         const url = new URL(BASE_URL);
         url.searchParams.set('action', 'out');
         url.searchParams.set('id', itemId);
-        url.searchParams.set('name', encodeURIComponent(itemName));
+        url.searchParams.set('name', itemName);
         return url.toString();
     }
-
-    // Generate QR optimal
+    
+    // Generate QR Code dengan teks URL
     async function generateQRCodeWithURL(url, size = 160) {
         return new Promise((resolve) => {
             const container = document.createElement('div');
@@ -273,9 +276,11 @@
                 colorLight: "#ffffff",
                 correctLevel: QRCode.CorrectLevel.H
             });
+            // Beri waktu untuk QRCode merender canvas
             setTimeout(() => {
                 let canvas = container.querySelector('canvas');
                 if (!canvas) {
+                    // Fallback jika canvas tidak ditemukan
                     const fallback = document.createElement('canvas');
                     fallback.width = size; fallback.height = size;
                     const ctx = fallback.getContext('2d');
@@ -297,33 +302,37 @@
             }, 100);
         });
     }
-
-    // Create item baru
+    
+    // Helper generate kode unik internal untuk item (tetap)
+    function generateInternalCode(name) {
+        const base = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const time = Date.now().toString().slice(-6);
+        return `INV/${base.substring(0,8)}/${time}`;
+    }
+    
+    // Create item baru dengan QR URL
     async function createItem(name) {
+        const internalCode = generateInternalCode(name);
         const itemId = Date.now() + Math.random();
-        const url = generateOutgoingURL(itemId, name);
-        const qr = await generateQRCodeWithURL(url, 160);
-        return {
+        const itemObject = {
             id: itemId,
             name: name,
-            uniqueCode: `INV_${itemId}`,
-            qrDataURL: qr,
-            outgoingURL: url
+            uniqueCode: internalCode,
+            qrDataURL: null,
+            outgoingURL: null
         };
+        const url = generateOutgoingURL(itemId, encodeURIComponent(name));
+        itemObject.outgoingURL = url;
+        const qr = await generateQRCodeWithURL(url, 160);
+        itemObject.qrDataURL = qr;
+        return itemObject;
     }
-
+    
     // Hitung stok
     function getTotalMasuk(itemId) { return transactions.filter(t => t.itemId === itemId && t.type === 'masuk').reduce((s, t) => s + t.quantityPcs, 0); }
     function getTotalKeluar(itemId) { return transactions.filter(t => t.itemId === itemId && t.type === 'keluar').reduce((s, t) => s + t.quantityPcs, 0); }
     function getStok(itemId) { return getTotalMasuk(itemId) - getTotalKeluar(itemId); }
     
-    // Ambil SEMUA tanggal keluar untuk suatu barang (urut kronologis dari lama ke baru, atau terbaru)
-    function getAllOutgoingDates(itemId) {
-        const keluarTrans = transactions.filter(t => t.itemId === itemId && t.type === 'keluar');
-        // urutkan dari tanggal tertua ke terbaru agar lebih rapi
-        return keluarTrans.sort((a,b) => a.date.localeCompare(b.date)).map(t => t.date);
-    }
-
     // Tambah transaksi masuk
     async function addMasukTransaction(itemName, unitType, unitQty, date) {
         if (!itemName) return false;
@@ -348,16 +357,16 @@
         showToast(`✅ +${pcs} PCS ${item.name}`);
         return true;
     }
-
-    // Proses keluar (panggil dari URL / manual)
+    
+    // Proses keluar (pengurangan stok) - dipanggil via URL atau manual
     async function processOutgoing(itemId, source = 'url_scan') {
         const item = items.find(i => i.id == itemId);
         if (!item) {
-            showToast(`❌ Barang tidak ditemukan`, true);
+            showToast(`❌ Barang tidak ditemukan (ID: ${itemId})`, true);
             return false;
         }
         if (getStok(item.id) <= 0) {
-            showToast(`⚠️ Stok ${item.name} habis!`, true);
+            showToast(`⚠️ Stok ${item.name} habis! Tidak bisa keluar.`, true);
             return false;
         }
         const today = new Date().toISOString().slice(0,10);
@@ -368,28 +377,16 @@
             date: today,
             quantityPcs: 1,
             unitRaw: '1 PCS',
-            note: `Keluar via ${source}`,
+            note: 'Keluar via scan URL barcode',
             source: source
         });
         saveToLocal();
         renderAll();
-        showToast(`✅ KELUAR: ${item.name} -1 PCS | Sisa: ${getStok(item.id)} PCS | Tgl: ${today}`);
+        showToast(`✅ KELUAR: ${item.name} -1 PCS | Sisa stok: ${getStok(item.id)} PCS`);
         return true;
     }
-
-    // Handle URL parameter (dari scan)
-    function handleIncomingURL() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const action = urlParams.get('action');
-        const itemId = urlParams.get('id');
-        if (action === 'out' && itemId) {
-            const newUrl = window.location.pathname;
-            window.history.replaceState({}, document.title, newUrl);
-            processOutgoing(itemId, 'scan_url');
-        }
-    }
-
-    // Toast notifikasi
+    
+    // Menampilkan notifikasi singkat
     function showToast(msg, isError = false) {
         const toastDiv = document.createElement('div');
         toastDiv.innerText = msg;
@@ -407,16 +404,32 @@
         document.body.appendChild(toastDiv);
         setTimeout(() => toastDiv.remove(), 2500);
     }
-
+    
+    // ==================== HANDLE URL PARAMETER (saat halaman dibuka dari scan) ====================
+    async function handleIncomingURL() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const action = urlParams.get('action');
+        const itemId = urlParams.get('id');
+        const itemNameRaw = urlParams.get('name');
+        
+        if (action === 'out' && itemId) {
+            // Hapus parameter dari URL agar tidak diproses berulang saat refresh
+            const newUrl = window.location.pathname;
+            window.history.replaceState({}, document.title, newUrl);
+            // Proses pengurangan stok
+            await processOutgoing(itemId, 'url_scan_direct');
+        }
+    }
+    
     // ==================== RENDER UI ====================
     function renderAll() {
         renderBarangTable();
-        renderRekapDenganSemuaTanggalKeluar();
+        renderRekap();
         renderTransactions();
         updateDropdown();
         updateConversion();
     }
-
+    
     function renderBarangTable() {
         const tbody = document.getElementById('barangBody');
         if (!items.length) { tbody.innerHTML = '<tr><td colspan="5">Kosong</td></tr>'; return; }
@@ -432,10 +445,19 @@
             const img = document.createElement('img');
             img.src = item.qrDataURL;
             img.className = 'barcode-img';
-            img.title = `Scan untuk keluar otomatis\n${item.outgoingURL}`;
+            img.title = `Scan barcode ini dengan kamera HP → Buka URL & kurangi stok\nURL: ${item.outgoingURL}`;
             img.onclick = () => {
                 const win = window.open();
-                win.document.write(`<html><body style="display:flex;justify-content:center;align-items:center;min-height:100vh;"><div><img src="${item.qrDataURL}" style="width:250px;"><p>${item.outgoingURL}</p></div></body></html>`);
+                win.document.write(`
+                    <html><head><title>Barcode ${item.name}</title></head>
+                    <body style="display:flex;justify-content:center;align-items:center;min-height:100vh;background:#f0f2f5;">
+                        <div style="background:white;padding:24px;border-radius:28px;text-align:center;">
+                            <img src="${item.qrDataURL}" style="width:280px;"><br>
+                            <p style="font-family:monospace;margin-top:12px;">${item.outgoingURL}</p>
+                            <small>Scan dengan kamera HP untuk mengurangi stok otomatis</small>
+                        </div>
+                    </body></html>
+                `);
                 win.document.close();
             };
             imgCell.appendChild(img);
@@ -449,37 +471,21 @@
             downCell.appendChild(div);
         });
     }
-
-    // REKAP DENGAN SEMUA TANGGAL KELUAR (Lengkap tanpa batasan)
-    function renderRekapDenganSemuaTanggalKeluar() {
+    
+    function renderRekap() {
         const tbody = document.getElementById('rekapBody');
-        if (!items.length) { tbody.innerHTML = '<tr><td colspan="5">Kosong</td><tr>'; return; }
+        if (!items.length) { tbody.innerHTML = '<tr><td colspan="4">Kosong</td></tr>'; return; }
         tbody.innerHTML = '';
         items.forEach(item => {
-            const masuk = getTotalMasuk(item.id);
-            const keluar = getTotalKeluar(item.id);
-            const stok = masuk - keluar;
-            const allDates = getAllOutgoingDates(item.id);
-            
-            // Format tampilan tanggal: bullet list atau comma, lebih rapi
-            let tanggalDisplay = '';
-            if (allDates.length === 0) {
-                tanggalDisplay = '<span style="color:#94a3b8;">Belum ada keluar</span>';
-            } else {
-                // Tampilkan semua tanggal dalam format daftar vertikal kecil
-                const dateItems = allDates.map(d => `📅 ${d}`).join('<br>');
-                tanggalDisplay = `<div class="date-list" style="max-height:80px; overflow-y:auto; line-height:1.4;">${dateItems}</div>`;
-            }
-            
+            const masuk = getTotalMasuk(item.id), keluar = getTotalKeluar(item.id), stok = masuk - keluar;
             const row = tbody.insertRow();
             row.insertCell(0).innerText = item.name;
             row.insertCell(1).innerHTML = `<span class="stok-masuk">${masuk.toLocaleString()}</span>`;
             row.insertCell(2).innerHTML = `<span class="stok-keluar">${keluar.toLocaleString()}</span>`;
             row.insertCell(3).innerHTML = stok >= 0 ? `<b style="color:#059669;">${stok.toLocaleString()}</b>` : `<b style="color:#dc2626;">${stok.toLocaleString()}</b>`;
-            row.insertCell(4).innerHTML = tanggalDisplay;
         });
     }
-
+    
     function renderTransactions() {
         const masukBody = document.getElementById('masukTableBody');
         const keluarBody = document.getElementById('keluarTableBody');
@@ -498,12 +504,11 @@
                 row.insertCell(0).innerText = tr.date;
                 row.insertCell(1).innerText = item.name;
                 row.insertCell(2).innerText = tr.quantityPcs.toLocaleString();
-                row.insertCell(3).innerText = tr.source === 'scan_url' ? 'Scan URL' : (tr.source || 'Manual');
-                row.insertCell(4).innerText = tr.note || '-';
+                row.insertCell(3).innerText = tr.source === 'url_scan_direct' ? 'Scan URL' : 'Manual';
             }
         });
     }
-
+    
     function updateDropdown() {
         const select = document.getElementById('itemNameSelect');
         const old = select.value;
@@ -516,46 +521,51 @@
         });
         if (old && items.some(i=>i.name===old)) select.value = old;
     }
-
+    
     function updateConversion() {
         const unit = document.getElementById('unitSelect').value;
         const qty = parseFloat(document.getElementById('unitQty').value) || 0;
         const pcs = qty * (unitToPcs[unit]||1);
         document.getElementById('conversionHint').innerHTML = `→ ${pcs.toLocaleString()} pcs`;
     }
-
+    
     async function downloadImg(dataURL, name, format) {
         const link = document.createElement('a');
-        if (format === 'png') { link.download = `${name}_barcode.png`; link.href = dataURL; }
+        if (format === 'png') { link.download = `${name}_barcode_url.png`; link.href = dataURL; }
         else if (format === 'jpg') {
             const img = new Image(); img.src = dataURL;
             await new Promise(r => { img.onload = r; });
             const canvas = document.createElement('canvas'); canvas.width = img.width; canvas.height = img.height;
             const ctx = canvas.getContext('2d'); ctx.fillStyle = 'white'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0);
-            link.download = `${name}_barcode.jpg`; link.href = canvas.toDataURL('image/jpeg',0.9);
+            link.download = `${name}_barcode_url.jpg`; link.href = canvas.toDataURL('image/jpeg',0.9);
         }
         link.click();
     }
     
     async function downloadPDF(dataURL, name, url) {
+        // Pastikan jsPDF sudah dimuat
+        if (typeof window.jspdf === 'undefined') {
+            showToast("Library PDF belum siap, coba lagi.", true);
+            return;
+        }
         const { jsPDF } = window.jspdf;
         const img = new Image(); img.src = dataURL;
         await new Promise(r => { img.onload = r; });
         const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
         const w = 70, h = (img.height * w) / img.width;
         pdf.setFontSize(14);
-        pdf.text(`Barcode: ${name}`, 105, 20, { align: 'center' });
+        pdf.text(`Barcode URL: ${name}`, 105, 20, { align: 'center' });
         pdf.addImage(img, 'PNG', (210-w)/2, 30, w, h);
         pdf.setFontSize(8);
         pdf.text(url, 105, 30+h+8, { align: 'center', maxWidth: 180 });
-        pdf.save(`${name}_barcode.pdf`);
+        pdf.save(`${name}_barcode_url.pdf`);
     }
-
+    
     // Cetak semua barcode
     document.getElementById('printAllBarcodeBtn').addEventListener('click', () => {
         if (!items.length) { alert("Tidak ada barcode"); return; }
         const printDiv = document.getElementById('printArea');
-        let html = `<div style="text-align:center;"><h2>Daftar Barcode</h2><p>${new Date().toLocaleString()}</p></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;">`;
+        let html = `<div style="text-align:center;"><h2>Daftar Barcode URL</h2><p>${new Date().toLocaleString()}</p><small>Scan dengan kamera HP → otomatis buka halaman & kurangi stok</small></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;">`;
         items.forEach(item => {
             html += `<div style="border:1px solid #aaa;border-radius:16px;padding:12px;text-align:center;">
                         <strong>${item.name}</strong><br>
@@ -568,22 +578,20 @@
         printDiv.innerHTML = html;
         window.print();
     });
-
-    // Export Excel (rekap + semua tanggal keluar)
+    
+    // Export rekap excel
     document.getElementById('exportRekapExcel').addEventListener('click', () => {
-        const wsData = [["Nama Barang", "Total Masuk (PCS)", "Total Keluar (PCS)", "Stok Akhir (PCS)", "Riwayat Tanggal Keluar (Semua)"]];
+        const wsData = [["Nama Barang", "Total Masuk (PCS)", "Total Keluar (PCS)", "Stok Total (PCS)", "Barcode URL"]];
         items.forEach(item => {
-            const dates = getAllOutgoingDates(item.id);
-            const tanggalStr = dates.length ? dates.join(", ") : "Tidak ada riwayat keluar";
-            wsData.push([item.name, getTotalMasuk(item.id), getTotalKeluar(item.id), getStok(item.id), tanggalStr]);
+            wsData.push([item.name, getTotalMasuk(item.id), getTotalKeluar(item.id), getStok(item.id), item.outgoingURL]);
         });
         const ws = XLSX.utils.aoa_to_sheet(wsData);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Rekap_Stok_Tanggal");
-        XLSX.writeFile(wb, `rekap_stok_tanggal_${new Date().toISOString().slice(0,10)}.xlsx`);
+        XLSX.utils.book_append_sheet(wb, ws, "Rekap_Barcode_URL");
+        XLSX.writeFile(wb, `rekap_barcode_url_${new Date().toISOString().slice(0,10)}.xlsx`);
     });
-
-    // Tombol tambah stok
+    
+    // Tombol tambah stok masuk
     document.getElementById('addStockBtn').addEventListener('click', async () => {
         let selected = document.getElementById('itemNameSelect').value;
         let newName = document.getElementById('newItemName').value.trim();
@@ -598,7 +606,7 @@
         document.getElementById('newItemName').value = '';
         document.getElementById('unitQty').value = '1';
     });
-
+    
     // Tab switching
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -609,39 +617,46 @@
             document.getElementById('keluarTab').style.display = tab === 'keluar' ? 'block' : 'none';
         });
     });
-
+    
     // Local storage
     function saveToLocal() {
-        localStorage.setItem('urlBarcodeWithDateFull', JSON.stringify(items.map(i => ({ id: i.id, name: i.name, uniqueCode: i.uniqueCode, qrDataURL: i.qrDataURL, outgoingURL: i.outgoingURL }))));
-        localStorage.setItem('urlBarcodeTransWithDateFull', JSON.stringify(transactions));
+        localStorage.setItem('urlBarcodeInventory', JSON.stringify(items.map(i => ({ id: i.id, name: i.name, uniqueCode: i.uniqueCode, qrDataURL: i.qrDataURL, outgoingURL: i.outgoingURL }))));
+        localStorage.setItem('urlBarcodeTransactions', JSON.stringify(transactions));
     }
     
     async function loadFromLocal() {
-        const storedItems = localStorage.getItem('urlBarcodeWithDateFull');
-        const storedTrans = localStorage.getItem('urlBarcodeTransWithDateFull');
+        const storedItems = localStorage.getItem('urlBarcodeInventory');
+        const storedTrans = localStorage.getItem('urlBarcodeTransactions');
         if (storedItems) items = JSON.parse(storedItems);
         if (storedTrans) transactions = JSON.parse(storedTrans);
-        if (items.length === 0) {
+        // Validasi dan pastikan setiap item punya qrDataURL dan outgoingURL yang valid
+        let needRecreate = false;
+        for (let i = 0; i < items.length; i++) {
+            if (!items[i].qrDataURL || !items[i].outgoingURL) {
+                needRecreate = true;
+                break;
+            }
+        }
+        if (items.length === 0 || needRecreate) {
+            // Buat data demo
             const demo1 = await createItem("Speaker JBL");
             const demo2 = await createItem("Mouse Logitech");
             items = [demo1, demo2];
             transactions = [
-                { id: Date.now()+1, itemId: demo1.id, type: 'masuk', date: '2025-03-10', quantityPcs: 5000, unitRaw: '5 Box', note: 'Awal' },
-                { id: Date.now()+2, itemId: demo2.id, type: 'masuk', date: '2025-03-11', quantityPcs: 3000, unitRaw: '3 Box', note: 'Awal' },
-                { id: Date.now()+3, itemId: demo1.id, type: 'keluar', date: '2025-03-15', quantityPcs: 1, unitRaw: '1 PCS', note: 'Contoh keluar', source: 'demo' },
-                { id: Date.now()+4, itemId: demo1.id, type: 'keluar', date: '2025-03-16', quantityPcs: 2, unitRaw: '2 PCS', note: 'Contoh keluar banyak', source: 'demo' },
-                { id: Date.now()+5, itemId: demo2.id, type: 'keluar', date: '2025-03-17', quantityPcs: 1, unitRaw: '1 PCS', note: 'Keluar test', source: 'demo' }
+                { id: Date.now()+1, itemId: demo1.id, type: 'masuk', date: '2025-01-15', quantityPcs: 5000, unitRaw: '5 Box', note: 'Awal' },
+                { id: Date.now()+2, itemId: demo2.id, type: 'masuk', date: '2025-01-16', quantityPcs: 3000, unitRaw: '3 Box', note: 'Awal' }
             ];
             saveToLocal();
         }
         renderAll();
     }
-
+    
     document.getElementById('masukDate').value = new Date().toISOString().slice(0,10);
     document.getElementById('unitSelect').addEventListener('change', updateConversion);
     document.getElementById('unitQty').addEventListener('input', updateConversion);
     updateConversion();
     
+    // Inisialisasi dan handle URL parameter
     loadFromLocal().then(() => {
         handleIncomingURL();
     });
