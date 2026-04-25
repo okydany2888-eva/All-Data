@@ -2,15 +2,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
-    <title>Barcode Inventory | Auto Scan Cepat + Portrait</title>
-    <!-- Library QR Code -->
+    <title>Barcode Inventory | Generate QR Optimal + Auto Scan Cepat</title>
+    <!-- Library QR Code dengan koreksi error tinggi agar mudah discan -->
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <!-- SheetJS untuk export -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <!-- html2canvas + jspdf -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <!-- Scanner kamera dengan performa tinggi -->
+    <!-- Scanner kamera -->
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <style>
         * {
@@ -114,12 +114,13 @@
         .stok-masuk { color: #059669; font-weight: bold; }
         .stok-keluar { color: #dc2626; }
         .barcode-img {
-            width: 50px;
-            height: 50px;
+            width: 55px;
+            height: 55px;
             cursor: pointer;
             background: white;
-            border-radius: 10px;
-            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            border: 1px solid #cbd5e1;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         }
         .scanner-area {
             background: #0f172a;
@@ -162,7 +163,7 @@
         .tab-btn.active { background: #2563eb; color: white; }
         .transaction-table { max-height: 350px; overflow-y: auto; }
         .btn-micro { padding: 4px 8px; font-size: 0.6rem; border-radius: 30px; }
-        .download-btns { display: flex; gap: 4px; flex-wrap: wrap; }
+        .download-btns { display: flex; gap: 5px; flex-wrap: wrap; }
         button, .tab-btn, .btn, .barcode-img { cursor: pointer; touch-action: manipulation; }
         input, select, button { font-size: 16px; }
         .permission-prompt {
@@ -173,17 +174,18 @@
             margin-bottom: 12px;
             font-size: 0.7rem;
         }
-        .scanner-status {
-            font-size: 0.7rem;
-            background: #1e293b;
-            padding: 6px 12px;
-            border-radius: 40px;
-            display: inline-block;
-        }
         #reader video {
             border-radius: 20px;
             width: 100%;
             max-width: 100%;
+        }
+        .qr-optimal-badge {
+            background: #e0f2fe;
+            color: #0369a1;
+            font-size: 0.65rem;
+            padding: 4px 10px;
+            border-radius: 30px;
+            display: inline-block;
         }
     </style>
 </head>
@@ -192,8 +194,8 @@
     <!-- Header -->
     <div class="card" style="background: linear-gradient(135deg, #1e293b, #0f172a); color:white;">
         <div class="flex-between">
-            <div><h1>📦 Barcode Pro</h1><p style="font-size: 0.7rem;">Auto Scan Cepat • Kamera Langsung Baca QR</p></div>
-            <div class="badge" style="background:#ffffff30;">⚡ Real-time Scan</div>
+            <div><h1>📦 Barcode Pro</h1><p style="font-size: 0.7rem;">Generate QR Optimal • Auto Scan Cepat</p></div>
+            <div class="badge" style="background:#ffffff30;">⚡ QR Error Correction High</div>
         </div>
     </div>
 
@@ -227,13 +229,14 @@
             </div>
             <button class="btn btn-primary" id="addStockBtn">📦 Tambah Stok Masuk</button>
         </div>
+        <div class="qr-optimal-badge">✨ QR Code digenerate dengan ukuran 160px, margin 4px, koreksi error HIGH (30%) → mudah discan kamera HP</div>
     </div>
 
     <!-- Daftar Barang & Stok -->
     <div class="card">
         <div class="flex-between"><h3>📋 Stok Barang</h3><button class="btn-success btn-sm" id="printAllBarcodeBtn" style="width: auto;">🖨️ Cetak</button></div>
         <div class="table-wrapper">
-            <table id="barangTable"><thead><tr><th>No</th><th>Nama</th><th>Stok (PCS)</th><th>Barcode</th><th>Download</th></tr></thead><tbody id="barangBody"></tbody></table>
+            <table id="barangTable"><thead><tr><th>No</th><th>Nama</th><th>Stok (PCS)</th><th>Barcode QR</th><th>Download</th></tr></thead><tbody id="barangBody"></tbody></table>
         </div>
     </div>
 
@@ -244,10 +247,10 @@
         <div id="keluarTab" style="display:none;" class="transaction-table"><table><thead><tr><th>Tgl</th><th>Barang</th><th>Jml (PCS)</th><th>Sumber</th></tr></thead><tbody id="keluarTableBody"></tbody></table></div>
     </div>
 
-    <!-- Scanner Kamera - AUTO SCAN CEPAT (Begitu QR terlihat langsung terbaca) -->
+    <!-- Scanner Kamera - Auto Scan Cepat -->
     <div class="scanner-area">
         <div class="flex-between">
-            <strong>📷 Kamera Aktif (Auto Scan)</strong>
+            <strong>📷 Kamera Aktif (Auto Scan QR)</strong>
             <div style="display: flex; gap: 8px;">
                 <button id="startScanBtn" class="btn-primary btn-sm">▶ Nyalakan Kamera</button>
                 <button id="stopScanBtn" class="btn-danger btn-sm" disabled>⏹ Matikan</button>
@@ -255,7 +258,7 @@
         </div>
         <div id="permissionStatus" class="permission-prompt" style="display: none;"></div>
         <div id="reader" style="width:100%; margin-top: 12px;"></div>
-        <div class="scan-result" id="scanInfo">🔍 Status: <span id="scanMessage">Tekan 'Nyalakan Kamera' dan izinkan akses. QR akan langsung terbaca otomatis.</span></div>
+        <div class="scan-result" id="scanInfo">🔍 Status: <span id="scanMessage">Tekan 'Nyalakan Kamera' & izinkan akses. QR akan langsung terbaca.</span></div>
     </div>
 
     <!-- Rekap Stok -->
@@ -263,40 +266,78 @@
         <div class="flex-between"><h3>📊 REKAP STOK TOTAL</h3><button class="btn-secondary btn-sm" id="exportRekapExcel" style="width: auto;">📎 Export</button></div>
         <div class="table-wrapper"><table id="rekapTable"><thead><tr><th>Nama Barang</th><th>Masuk</th><th>Keluar</th><th>Stok</th></tr></thead><tbody id="rekapBody"></tbody></table></div>
     </div>
-    <div class="info-footer">💡 Arahkan kamera ke barcode QR (format OUT|KODE|NAMA) → otomatis kurangi stok 1 PCS dalam 1 detik. Scan cepat tanpa tombol tambahan.</div>
+    <div class="info-footer">💡 QR Code menggunakan koreksi error HIGH (Level Q/H) agar mudah discan walau agak buram. Scan otomatis 1x = keluar 1 PCS.</div>
 </div>
 <div id="printArea" style="display: none;"></div>
 
 <script>
-    // ==================== DATA & FUNGSI UTAMA ====================
+    // ==================== DATA MODEL ====================
     let items = [];
     let transactions = [];
     const unitToPcs = { 'pcs': 1, 'box': 1000, 'display': 1000, 'dus': 500, 'karton': 2000 };
 
+    // ==================== GENERATE QR OPTIMAL (AGAR MUDAH TERBACA PERANGKAT) ====================
+    // Menggunakan QRCode.js dengan correctLevel HIGH (Q) atau H. Level HIGH = 30% recovery.
+    // Ukuran lebih besar (160px) + margin putih ekstra agar deteksi mudah.
+    async function generateOptimalQRCode(text, size = 160) {
+        return new Promise((resolve) => {
+            const container = document.createElement('div');
+            container.style.width = `${size}px`;
+            container.style.height = `${size}px`;
+            container.style.backgroundColor = 'white';
+            container.style.padding = '8px'; // margin internal
+            container.style.display = 'inline-block';
+            // Gunakan QRCode dengan level koreksi error tertinggi yang didukung: 'H' (High)
+            new QRCode(container, {
+                text: text,
+                width: size,
+                height: size,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H   // High error correction (30%) - optimal untuk scan kamera HP
+            });
+            setTimeout(() => {
+                let canvas = container.querySelector('canvas');
+                if (!canvas) {
+                    // fallback
+                    const fallback = document.createElement('canvas');
+                    fallback.width = size;
+                    fallback.height = size;
+                    const ctx = fallback.getContext('2d');
+                    ctx.fillStyle = 'white';
+                    ctx.fillRect(0, 0, size, size);
+                    ctx.fillStyle = 'black';
+                    ctx.font = "bold 14px monospace";
+                    ctx.fillText("QR", size/2-10, size/2);
+                    canvas = fallback;
+                }
+                // Tambahkan border putih ekstra di sekeliling QR (membantu deteksi pattern)
+                const finalCanvas = document.createElement('canvas');
+                const padding = 12; // white border
+                finalCanvas.width = canvas.width + padding * 2;
+                finalCanvas.height = canvas.height + padding * 2;
+                const ctxFinal = finalCanvas.getContext('2d');
+                ctxFinal.fillStyle = '#FFFFFF';
+                ctxFinal.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
+                ctxFinal.drawImage(canvas, padding, padding, canvas.width, canvas.height);
+                const finalDataURL = finalCanvas.toDataURL('image/png');
+                resolve(finalDataURL);
+            }, 100);
+        });
+    }
+
+    // Helper kode unik
     function generateUniqueCode(name) {
         const base = name.toLowerCase().replace(/[^a-z0-9]/g, '');
         const time = Date.now().toString().slice(-6);
         return `INV/${base.substring(0,8)}/${time}`;
     }
 
-    async function generateQR(text, size=120) {
-        return new Promise((resolve) => {
-            const div = document.createElement('div');
-            div.style.width = `${size}px`; div.style.height = `${size}px`;
-            new QRCode(div, { text: text, width: size, height: size, colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.M });
-            setTimeout(() => {
-                let canvas = div.querySelector('canvas');
-                if (!canvas) { canvas = document.createElement('canvas'); canvas.width = size; canvas.height = size; }
-                resolve(canvas.toDataURL('image/png'));
-            }, 60);
-        });
-    }
-
     async function createItem(name) {
         const code = generateUniqueCode(name);
         const rawValue = `OUT|${code}|${name}`;
-        const qr = await generateQR(rawValue, 120);
-        return { id: Date.now() + Math.random(), name, uniqueCode: code, qrDataURL: qr, rawValueOUT: rawValue };
+        const qrDataURL = await generateOptimalQRCode(rawValue, 160);
+        return { id: Date.now() + Math.random(), name, uniqueCode: code, qrDataURL: qrDataURL, rawValueOUT: rawValue };
     }
 
     function getTotalMasuk(itemId) { return transactions.filter(t => t.itemId === itemId && t.type === 'masuk').reduce((s, t) => s + t.quantityPcs, 0); }
@@ -322,6 +363,8 @@
         transactions.push({ id: Date.now()+Math.random(), itemId: itemId, type: 'keluar', date, quantityPcs: 1, unitRaw: '1 PCS', note: 'Auto scan keluar', source: 'kamera' });
         saveToLocal(); renderAll();
         document.getElementById('scanMessage').innerHTML = `✅ [OTOMATIS] Keluar 1 PCS ${item.name} | Sisa: ${getStok(itemId)} PCS`;
+        // getar singkat jika support (opsional)
+        if (navigator.vibrate) navigator.vibrate(80);
         return true;
     }
 
@@ -343,7 +386,7 @@
         }
     }
 
-    // Render semua komponen UI
+    // ==================== RENDER UI ====================
     function renderAll() {
         renderBarangTable();
         renderRekap();
@@ -367,7 +410,8 @@
             const img = document.createElement('img');
             img.src = item.qrDataURL;
             img.className = 'barcode-img';
-            img.onclick = () => { const w = window.open(); w.document.write(`<img src="${item.qrDataURL}" style="width:200px;"><p>${item.rawValueOUT}</p>`); w.document.close(); };
+            img.title = 'Klik perbesar - QR dengan error correction HIGH';
+            img.onclick = () => { const w = window.open(); w.document.write(`<html><head><title>QR Optimal</title></head><body style="display:flex;justify-content:center;align-items:center;min-height:100vh;"><img src="${item.qrDataURL}" style="width:280px;border:1px solid #ccc;background:white;padding:8px;"><p style="text-align:center;">${item.rawValueOUT}</p></body></html>`); w.document.close(); };
             imgCell.appendChild(img);
             const downCell = row.insertCell(4);
             const div = document.createElement('div'); div.className = 'download-btns';
@@ -454,7 +498,7 @@
         pdf.save(`${name}_barcode.pdf`);
     }
 
-    // ================ SCANNER DENGAN AUTO DETEKSI CEPAT ================
+    // ==================== SCANNER AUTO CEPAT ====================
     let html5QrCode = null;
     let isScanningActive = false;
     const startBtn = document.getElementById('startScanBtn');
@@ -464,13 +508,13 @@
 
     async function startAutoScanner() {
         permissionDiv.style.display = 'block';
-        permissionDiv.innerHTML = '📷 Meminta akses kamera (wajib izinkan) dan memulai auto-scan...';
+        permissionDiv.innerHTML = '📷 Meminta izin kamera (diperlukan untuk auto scan QR)...';
         try {
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 throw new Error('Browser tidak mendukung kamera. Gunakan Chrome/Edge di Android.');
             }
             const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-            stream.getTracks().forEach(track => track.stop()); // test izin berhasil
+            stream.getTracks().forEach(track => track.stop());
             
             if (html5QrCode && isScanningActive) {
                 await html5QrCode.stop();
@@ -480,7 +524,7 @@
             readerDiv.innerHTML = "";
             html5QrCode = new Html5Qrcode("reader");
             const config = {
-                fps: 15,              // frame rate tinggi untuk deteksi cepat
+                fps: 20,
                 qrbox: { width: 280, height: 280 },
                 aspectRatio: 1.0,
                 disableFlip: false,
@@ -489,27 +533,18 @@
             await html5QrCode.start(
                 { facingMode: "environment" },
                 config,
-                (decodedText) => {
-                    // Ketika QR terdeteksi, langsung proses tanpa jeda
-                    processScan(decodedText);
-                    // Vibrasi singkat jika support (opsional)
-                    if (navigator.vibrate) navigator.vibrate(100);
-                },
-                (errorMsg) => { 
-                    // Abaikan error frame (biasa terjadi karena tidak ada QR)
-                    // Tapi tidak mengganggu
-                }
+                (decodedText) => { processScan(decodedText); },
+                (errorMsg) => { /* ignore */ }
             );
             isScanningActive = true;
             startBtn.disabled = true;
             stopBtn.disabled = false;
-            permissionDiv.innerHTML = '✅ Kamera aktif - Arahkan ke barcode QR, akan terbaca otomatis!';
+            permissionDiv.innerHTML = '✅ Kamera aktif - Arahkan ke QR, akan terbaca otomatis (error correction HIGH membantu)';
             setTimeout(() => permissionDiv.style.display = 'none', 2500);
             document.getElementById('scanMessage').innerHTML = "📷 Kamera menyala - QR akan langsung terbaca saat terlihat";
         } catch (err) {
-            console.error(err);
             let errMsg = err.message;
-            if (err.name === 'NotAllowedError') errMsg = 'Izin kamera ditolak. Buka pengaturan dan izinkan kamera untuk browser ini.';
+            if (err.name === 'NotAllowedError') errMsg = 'Izin kamera ditolak. Buka pengaturan HP dan izinkan kamera untuk browser.';
             permissionDiv.innerHTML = `❌ Gagal: ${errMsg}`;
             permissionDiv.style.background = '#dc2626';
             permissionDiv.style.color = 'white';
@@ -531,7 +566,7 @@
         readerDiv.innerHTML = "";
         startBtn.disabled = false;
         stopBtn.disabled = true;
-        document.getElementById('scanMessage').innerHTML = "⏹ Kamera dimatikan. Tekan 'Nyalakan Kamera' untuk memulai auto-scan.";
+        document.getElementById('scanMessage').innerHTML = "⏹ Kamera dimatikan. Tekan 'Nyalakan Kamera' untuk auto-scan.";
         permissionDiv.style.display = 'none';
     }
 
@@ -542,9 +577,9 @@
     document.getElementById('printAllBarcodeBtn').addEventListener('click', () => {
         if (!items.length) { alert("Tidak ada barcode"); return; }
         const printDiv = document.getElementById('printArea');
-        let html = `<div style="text-align:center;"><h2>Barcode</h2><p>${new Date().toLocaleString()}</p></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;">`;
+        let html = `<div style="text-align:center;"><h2>Barcode Optimal</h2><p>${new Date().toLocaleString()}</p><small>Error Correction HIGH</small></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;">`;
         items.forEach(item => {
-            html += `<div style="border:1px solid #aaa;border-radius:16px;padding:10px;text-align:center;"><strong>${item.name}</strong><br><img src="${item.qrDataURL}" width="100"><br><span style="font-size:8px;">${item.rawValueOUT}</span><div>Stok: ${getStok(item.id)} PCS</div></div>`;
+            html += `<div style="border:1px solid #aaa;border-radius:16px;padding:10px;text-align:center;"><strong>${item.name}</strong><br><img src="${item.qrDataURL}" width="110"><br><span style="font-size:8px;">${item.rawValueOUT}</span><div>Stok: ${getStok(item.id)} PCS</div></div>`;
         });
         html += `</div>`;
         printDiv.innerHTML = html;
@@ -575,7 +610,7 @@
         document.getElementById('unitQty').value = '1';
     });
 
-    // Tab switching
+    // Tab
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -588,12 +623,12 @@
 
     // Local storage
     function saveToLocal() {
-        localStorage.setItem('autoScanInventory', JSON.stringify(items.map(i => ({ id: i.id, name: i.name, uniqueCode: i.uniqueCode, qrDataURL: i.qrDataURL, rawValueOUT: i.rawValueOUT }))));
-        localStorage.setItem('autoScanTransactions', JSON.stringify(transactions));
+        localStorage.setItem('optimalQRInventory', JSON.stringify(items.map(i => ({ id: i.id, name: i.name, uniqueCode: i.uniqueCode, qrDataURL: i.qrDataURL, rawValueOUT: i.rawValueOUT }))));
+        localStorage.setItem('optimalQRTransactions', JSON.stringify(transactions));
     }
     async function loadFromLocal() {
-        const storedItems = localStorage.getItem('autoScanInventory');
-        const storedTrans = localStorage.getItem('autoScanTransactions');
+        const storedItems = localStorage.getItem('optimalQRInventory');
+        const storedTrans = localStorage.getItem('optimalQRTransactions');
         if (storedItems) items = JSON.parse(storedItems);
         if (storedTrans) transactions = JSON.parse(storedTrans);
         if (items.length === 0) {
