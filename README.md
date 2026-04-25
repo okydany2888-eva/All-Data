@@ -165,25 +165,7 @@
             border: 1.5px solid #e2e8f0;
             font-size: 0.85rem;
         }
-        .month-nav {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 12px;
-            flex-wrap: wrap;
-        }
-        .month-nav select, .month-nav input {
-            padding: 8px 12px;
-            border-radius: 40px;
-            border: 1px solid #cbd5e1;
-        }
-        .detail-link {
-            color: #2563eb;
-            cursor: pointer;
-            text-decoration: underline;
-            font-size: 0.7rem;
-        }
+        /* Modal Style */
         .modal {
             display: none;
             position: fixed;
@@ -201,12 +183,8 @@
             width: 90%;
             max-width: 400px;
             margin: 20px;
-            max-height: 80vh;
-            overflow-y: auto;
         }
         .action-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
-        .detail-list { font-size: 0.75rem; }
-        .detail-list-item { padding: 8px 0; border-bottom: 1px solid #e2e8f0; }
     </style>
 </head>
 <body>
@@ -248,7 +226,7 @@
             </div>
             <button class="btn btn-primary" id="addStockBtn">📦 Tambah Stok Masuk</button>
         </div>
-        <div class="url-preview" id="urlExamplePreview">💡 Barcode akan berisi URL</div>
+        <div class="url-preview" id="urlExamplePreview">💡 Barcode akan berisi URL: https://domain.com/out?id=XXX&name=Barang (scan dengan kamera HP akan langsung membuka halaman & mengurangi stok)</div>
     </div>
 
     <!-- Daftar Barang & Barcode URL -->
@@ -270,33 +248,10 @@
         <div id="keluarTab" style="display:none;" class="transaction-table"><table style="width:100%"><thead><tr><th>Tgl</th><th>Barang</th><th>Jml (PCS)</th><th>Sumber</th></tr></thead><tbody id="keluarTableBody"></tbody></table></div>
     </div>
 
-    <!-- REKAP STOK TOTAL DENGAN PAGINASI BULAN -->
+    <!-- Rekap Stok -->
     <div class="card rekapan-card">
-        <div class="flex-between"><h3>📊 REKAP STOK PER BULAN</h3><button class="btn-secondary btn-sm" id="exportRekapExcel">📎 Export Bulan Ini</button></div>
-        
-        <!-- Filter Bulan & Pencarian -->
-        <div class="month-nav">
-            <button class="btn-secondary btn-sm" id="prevMonthBtn">◀ Prev</button>
-            <div class="flex-between" style="gap: 8px;">
-                <select id="monthSelect">
-                    <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>
-                    <option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>
-                    <option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option>
-                    <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
-                </select>
-                <input type="number" id="yearSelect" min="2020" max="2030" value="2025" style="width: 80px;">
-            </div>
-            <button class="btn-secondary btn-sm" id="nextMonthBtn">Next ▶</button>
-        </div>
-        <input type="text" id="searchRekap" class="search-box" placeholder="🔍 Cari barang di rekap...">
-        
-        <div class="table-wrapper">
-            <table id="rekapTable">
-                <thead><tr><th>Nama Barang</th><th>Masuk (PCS)</th><th>Keluar (PCS)</th><th>Stok Akhir</th><th>Detail Keluar</th></tr></thead>
-                <tbody id="rekapBody"></tbody>
-            </table>
-        </div>
-        <div class="info-footer" style="margin-top: 8px;">📅 Menampilkan transaksi pada bulan yang dipilih</div>
+        <div class="flex-between"><h3>📊 REKAP STOK TOTAL</h3><button class="btn-secondary btn-sm" id="exportRekapExcel">📎 Export</button></div>
+        <div class="table-wrapper"><table id="rekapTable"><thead><tr><th>Nama Barang</th><th>Masuk</th><th>Keluar</th><th>Stok</th></tr></thead><tbody id="rekapBody"></tbody></table></div>
     </div>
     <div class="info-footer">🌐 Setiap barcode berisi URL ke halaman ini dengan parameter action=out&id=... Saat discan pemindai HP → terbuka browser → stok otomatis berkurang 1.</div>
 </div>
@@ -314,21 +269,12 @@
         <div class="input-group" style="margin-bottom: 12px;">
             <label>Sesuaikan Stok (opsional, PCS)</label>
             <input type="number" id="editStockAdjust" value="0" step="1">
-            <small style="font-size:10px;">Isi dengan angka positif untuk tambah stok, negatif untuk kurangi stok</small>
+            <small style="font-size:10px;">Isi dengan angka positif untuk tambah stok, negatif untuk kurangi stok (contoh: -5)</small>
         </div>
         <div class="action-btns">
             <button class="btn-secondary btn-sm" id="closeModalBtn">Batal</button>
-            <button class="btn-primary btn-sm" id="saveEditBtn">Simpan</button>
+            <button class="btn-primary btn-sm" id="saveEditBtn">Simpan Perubahan</button>
         </div>
-    </div>
-</div>
-
-<!-- Modal Detail Keluar -->
-<div id="detailModal" class="modal">
-    <div class="modal-content">
-        <h3 style="margin-bottom: 16px;">📋 Detail Transaksi Keluar</h3>
-        <div id="detailContent" class="detail-list"></div>
-        <div class="action-btns"><button class="btn-secondary btn-sm" id="closeDetailBtn">Tutup</button></div>
     </div>
 </div>
 
@@ -337,9 +283,6 @@
     let items = [];
     let transactions = [];
     let currentSearchTerm = '';
-    let currentRekapSearch = '';
-    let currentMonth = new Date().getMonth() + 1;
-    let currentYear = new Date().getFullYear();
     const unitToPcs = { 'pcs': 1, 'box': 1000, 'display': 1000, 'dus': 500, 'karton': 2000 };
     
     const BASE_URL = window.location.origin + window.location.pathname;
@@ -414,35 +357,8 @@
         item.qrDataURL = await generateQRCodeWithURL(newUrl, 160);
     }
     
-    function getTotalMasuk(itemId, month = null, year = null) {
-        let filtered = transactions.filter(t => t.itemId === itemId && t.type === 'masuk');
-        if (month && year) {
-            filtered = filtered.filter(t => {
-                const [y, m] = t.date.split('-');
-                return parseInt(y) === year && parseInt(m) === month;
-            });
-        }
-        return filtered.reduce((s, t) => s + t.quantityPcs, 0);
-    }
-    
-    function getTotalKeluar(itemId, month = null, year = null) {
-        let filtered = transactions.filter(t => t.itemId === itemId && t.type === 'keluar');
-        if (month && year) {
-            filtered = filtered.filter(t => {
-                const [y, m] = t.date.split('-');
-                return parseInt(y) === year && parseInt(m) === month;
-            });
-        }
-        return filtered.reduce((s, t) => s + t.quantityPcs, 0);
-    }
-    
-    function getKeluarDetails(itemId, month, year) {
-        return transactions.filter(t => t.itemId === itemId && t.type === 'keluar' && {
-            const [y, m] = t.date.split('-');
-            return parseInt(y) === year && parseInt(m) === month;
-        });
-    }
-    
+    function getTotalMasuk(itemId) { return transactions.filter(t => t.itemId === itemId && t.type === 'masuk').reduce((s, t) => s + t.quantityPcs, 0); }
+    function getTotalKeluar(itemId) { return transactions.filter(t => t.itemId === itemId && t.type === 'keluar').reduce((s, t) => s + t.quantityPcs, 0); }
     function getStok(itemId) { return getTotalMasuk(itemId) - getTotalKeluar(itemId); }
     
     async function addMasukTransaction(itemName, unitType, unitQty, date) {
@@ -472,11 +388,11 @@
     async function processOutgoing(itemId, source = 'url_scan') {
         const item = items.find(i => i.id == itemId);
         if (!item) {
-            showToast(`❌ Barang tidak ditemukan`, true);
+            showToast(`❌ Barang tidak ditemukan (ID: ${itemId})`, true);
             return false;
         }
         if (getStok(item.id) <= 0) {
-            showToast(`⚠️ Stok ${item.name} habis!`, true);
+            showToast(`⚠️ Stok ${item.name} habis! Tidak bisa keluar.`, true);
             return false;
         }
         const today = new Date().toISOString().slice(0,10);
@@ -492,7 +408,7 @@
         });
         saveToLocal();
         renderAll();
-        showToast(`✅ KELUAR: ${item.name} -1 PCS | Sisa: ${getStok(item.id)} PCS`);
+        showToast(`✅ KELUAR: ${item.name} -1 PCS | Sisa stok: ${getStok(item.id)} PCS`);
         return true;
     }
     
@@ -526,7 +442,7 @@
         }
     }
     
-    // ==================== EDIT & DELETE ====================
+    // ==================== EDIT & DELETE FUNCTIONS ====================
     function openEditModal(itemId) {
         const item = items.find(i => i.id == itemId);
         if (!item) return;
@@ -541,67 +457,91 @@
         const newName = document.getElementById('editItemName').value.trim();
         const stockAdjust = parseInt(document.getElementById('editStockAdjust').value) || 0;
         
-        if (!newName) { showToast("Nama barang tidak boleh kosong!", true); return; }
+        if (!newName) {
+            showToast("Nama barang tidak boleh kosong!", true);
+            return;
+        }
         
         const itemIndex = items.findIndex(i => i.id == itemId);
         if (itemIndex === -1) return;
         
+        // Cek duplikasi nama (kecuali dirinya sendiri)
         const duplicate = items.some((i, idx) => idx !== itemIndex && i.name.toLowerCase() === newName.toLowerCase());
-        if (duplicate) { showToast(`Nama "${newName}" sudah ada!`, true); return; }
+        if (duplicate) {
+            showToast(`Barang dengan nama "${newName}" sudah ada!`, true);
+            return;
+        }
         
         const oldName = items[itemIndex].name;
         items[itemIndex].name = newName;
+        
+        // Update QR code dengan nama baru
         await updateItemQR(items[itemIndex]);
         
+        // Handle penyesuaian stok jika ada
         if (stockAdjust !== 0) {
             const today = new Date().toISOString().slice(0,10);
             if (stockAdjust > 0) {
-                transactions.push({ id: Date.now()+Math.random(), itemId: items[itemIndex].id, type: 'masuk', date: today, quantityPcs: stockAdjust, unitRaw: `${stockAdjust} PCS (penyesuaian)`, note: 'Penyesuaian stok' });
-                showToast(`📦 Stok +${stockAdjust} PCS`);
+                transactions.push({
+                    id: Date.now()+Math.random(),
+                    itemId: items[itemIndex].id,
+                    type: 'masuk',
+                    date: today,
+                    quantityPcs: stockAdjust,
+                    unitRaw: `${stockAdjust} PCS (penyesuaian)`,
+                    note: 'Penyesuaian stok via edit'
+                });
+                showToast(`📦 Stok ${newName} +${stockAdjust} PCS (penyesuaian)`);
             } else if (stockAdjust < 0) {
                 const currentStok = getStok(items[itemIndex].id);
                 if (currentStok + stockAdjust < 0) {
-                    showToast(`⚠️ Stok tidak cukup! Stok saat ini ${currentStok} PCS.`, true);
-                    saveToLocal(); renderAll(); document.getElementById('editModal').style.display = 'none';
+                    showToast(`⚠️ Stok tidak cukup! Stok saat ini ${currentStok} PCS, tidak bisa dikurangi ${Math.abs(stockAdjust)} PCS.`, true);
+                    // Jangan simpan perubahan stok, tapi nama tetap berubah
+                    saveToLocal();
+                    renderAll();
+                    document.getElementById('editModal').style.display = 'none';
                     return;
                 }
-                transactions.push({ id: Date.now()+Math.random(), itemId: items[itemIndex].id, type: 'keluar', date: today, quantityPcs: Math.abs(stockAdjust), unitRaw: `${Math.abs(stockAdjust)} PCS (penyesuaian)`, note: 'Penyesuaian stok', source: 'edit_manual' });
-                showToast(`📤 Stok ${stockAdjust} PCS`);
+                transactions.push({
+                    id: Date.now()+Math.random(),
+                    itemId: items[itemIndex].id,
+                    type: 'keluar',
+                    date: today,
+                    quantityPcs: Math.abs(stockAdjust),
+                    unitRaw: `${Math.abs(stockAdjust)} PCS (penyesuaian)`,
+                    note: 'Penyesuaian stok via edit',
+                    source: 'edit_manual'
+                });
+                showToast(`📤 Stok ${newName} ${stockAdjust} PCS (penyesuaian)`);
             }
         }
-        saveToLocal(); renderAll(); document.getElementById('editModal').style.display = 'none';
-        showToast(`✅ ${oldName} → ${newName}`);
+        
+        saveToLocal();
+        renderAll();
+        document.getElementById('editModal').style.display = 'none';
+        showToast(`✅ Barang berhasil diupdate: ${oldName} → ${newName}`);
     }
     
     function deleteItem(itemId) {
-        if (!confirm("⚠️ Hapus barang & semua riwayatnya?")) return;
+        if (!confirm("⚠️ Yakin ingin menghapus barang ini?\nSemua riwayat transaksi barang ini juga akan dihapus!")) return;
+        
         const itemIndex = items.findIndex(i => i.id == itemId);
         if (itemIndex === -1) return;
         const itemName = items[itemIndex].name;
+        
+        // Hapus semua transaksi yang terkait dengan item ini
         transactions = transactions.filter(t => t.itemId != itemId);
         items.splice(itemIndex, 1);
-        saveToLocal(); renderAll();
-        showToast(`🗑️ "${itemName}" telah dihapus.`);
-    }
-    
-    function showKeluarDetail(itemName, keluarTransactions) {
-        const detailContent = document.getElementById('detailContent');
-        if (!keluarTransactions.length) {
-            detailContent.innerHTML = '<p>Tidak ada transaksi keluar pada bulan ini.</p>';
-        } else {
-            let html = `<p><strong>${itemName}</strong> - Transaksi Keluar:</p>`;
-            keluarTransactions.forEach(tr => {
-                html += `<div class="detail-list-item">📅 ${tr.date} | ${tr.quantityPcs.toLocaleString()} PCS | ${tr.source === 'url_scan_direct' ? 'Scan URL' : (tr.source === 'edit_manual' ? 'Edit Manual' : 'Manual')}</div>`;
-            });
-            detailContent.innerHTML = html;
-        }
-        document.getElementById('detailModal').style.display = 'flex';
+        
+        saveToLocal();
+        renderAll();
+        showToast(`🗑️ Barang "${itemName}" beserta riwayatnya telah dihapus.`);
     }
     
     // ==================== RENDER UI ====================
     function renderAll() {
         renderBarangTable();
-        renderRekapPerBulan();
+        renderRekap();
         renderTransactions();
         updateDropdown();
         updateConversion();
@@ -610,8 +550,14 @@
     function renderBarangTable() {
         const tbody = document.getElementById('barangBody');
         let filteredItems = items;
-        if (currentSearchTerm) filteredItems = items.filter(item => item.name.toLowerCase().includes(currentSearchTerm.toLowerCase()));
-        if (!filteredItems.length) { tbody.innerHTML = `<td><td colspan="6" style="text-align:center;">Tidak ada barang</td></tr>`; return; }
+        if (currentSearchTerm) {
+            filteredItems = items.filter(item => item.name.toLowerCase().includes(currentSearchTerm.toLowerCase()));
+        }
+        
+        if (!filteredItems.length) { 
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">Tidak ada barang ditemukan</td></tr>`; 
+            return; 
+        }
         tbody.innerHTML = '';
         filteredItems.forEach((item, idx) => {
             const stok = getStok(item.id);
@@ -620,65 +566,86 @@
             row.insertCell(1).innerText = item.name;
             row.insertCell(2).innerHTML = stok >= 0 ? `<b class="stok-masuk">${stok.toLocaleString()}</b>` : `<b class="stok-keluar">${stok.toLocaleString()}</b>`;
             const imgCell = row.insertCell(3);
-            const img = document.createElement('img'); img.src = item.qrDataURL; img.className = 'barcode-img';
-            img.onclick = () => { const win = window.open(); win.document.write(`<html><body style="display:flex;justify-content:center;align-items:center;min-height:100vh;"><div style="text-align:center;"><img src="${item.qrDataURL}" width="280"><br><small>${item.outgoingURL}</small></div></body></html>`); win.document.close(); };
+            const img = document.createElement('img');
+            img.src = item.qrDataURL;
+            img.className = 'barcode-img';
+            img.title = `Scan barcode ini dengan kamera HP → Buka URL & kurangi stok\nURL: ${item.outgoingURL}`;
+            img.onclick = () => {
+                const win = window.open();
+                win.document.write(`
+                    <html><head><title>Barcode ${item.name}</title></head>
+                    <body style="display:flex;justify-content:center;align-items:center;min-height:100vh;background:#f0f2f5;">
+                        <div style="background:white;padding:24px;border-radius:28px;text-align:center;">
+                            <img src="${item.qrDataURL}" style="width:280px;"><br>
+                            <p style="font-family:monospace;margin-top:12px;">${item.outgoingURL}</p>
+                            <small>Scan dengan kamera HP untuk mengurangi stok otomatis</small>
+                        </div>
+                    </body></html>
+                `);
+                win.document.close();
+            };
             imgCell.appendChild(img);
             const downCell = row.insertCell(4);
             const div = document.createElement('div'); div.className = 'download-btns';
-            const png = document.createElement('button'); png.innerText = 'PNG'; png.className = 'btn-micro btn-secondary'; png.onclick = () => downloadImg(item.qrDataURL, item.name);
-            const pdf = document.createElement('button'); pdf.innerText = 'PDF'; pdf.className = 'btn-micro btn-secondary'; pdf.onclick = () => downloadPDF(item.qrDataURL, item.name, item.outgoingURL);
+            const png = document.createElement('button'); png.innerText = 'PNG'; png.className = 'btn-micro btn-secondary'; 
+            png.onclick = () => downloadImg(item.qrDataURL, item.name, 'png');
+            const pdf = document.createElement('button'); pdf.innerText = 'PDF'; pdf.className = 'btn-micro btn-secondary'; 
+            pdf.onclick = () => downloadPDF(item.qrDataURL, item.name, item.outgoingURL);
             div.appendChild(png); div.appendChild(pdf);
             downCell.appendChild(div);
+            
             const actionCell = row.insertCell(5);
-            const editBtn = document.createElement('button'); editBtn.innerText = '✏️'; editBtn.className = 'btn-micro btn-warning'; editBtn.style.marginRight = '5px'; editBtn.onclick = () => openEditModal(item.id);
-            const delBtn = document.createElement('button'); delBtn.innerText = '🗑️'; delBtn.className = 'btn-micro btn-danger'; delBtn.onclick = () => deleteItem(item.id);
-            actionCell.appendChild(editBtn); actionCell.appendChild(delBtn);
+            const editBtn = document.createElement('button');
+            editBtn.innerText = '✏️ Edit';
+            editBtn.className = 'btn-micro btn-warning';
+            editBtn.style.marginRight = '5px';
+            editBtn.onclick = () => openEditModal(item.id);
+            const delBtn = document.createElement('button');
+            delBtn.innerText = '🗑️ Hapus';
+            delBtn.className = 'btn-micro btn-danger';
+            delBtn.onclick = () => deleteItem(item.id);
+            actionCell.appendChild(editBtn);
+            actionCell.appendChild(delBtn);
         });
     }
     
-    function renderRekapPerBulan() {
+    function renderRekap() {
         const tbody = document.getElementById('rekapBody');
         let filteredItems = items;
-        if (currentRekapSearch) filteredItems = items.filter(item => item.name.toLowerCase().includes(currentRekapSearch.toLowerCase()));
-        if (!filteredItems.length) { tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;">Tidak ada data</td></tr>`; return; }
+        if (currentSearchTerm) {
+            filteredItems = items.filter(item => item.name.toLowerCase().includes(currentSearchTerm.toLowerCase()));
+        }
+        if (!filteredItems.length) { tbody.innerHTML = '<tr><td colspan="4">Kosong</td></tr>'; return; }
         tbody.innerHTML = '';
         filteredItems.forEach(item => {
-            const masuk = getTotalMasuk(item.id, currentMonth, currentYear);
-            const keluar = getTotalKeluar(item.id, currentMonth, currentYear);
-            const stokAwal = getTotalMasuk(item.id) - getTotalKeluar(item.id) - (masuk - keluar);
-            const stokAkhir = stokAwal + masuk - keluar;
-            const keluarTransaksi = transactions.filter(t => t.itemId === item.id && t.type === 'keluar' && {
-                const [y, m] = t.date.split('-');
-                return parseInt(y) === currentYear && parseInt(m) === currentMonth;
-            });
+            const masuk = getTotalMasuk(item.id), keluar = getTotalKeluar(item.id), stok = masuk - keluar;
             const row = tbody.insertRow();
             row.insertCell(0).innerText = item.name;
             row.insertCell(1).innerHTML = `<span class="stok-masuk">${masuk.toLocaleString()}</span>`;
             row.insertCell(2).innerHTML = `<span class="stok-keluar">${keluar.toLocaleString()}</span>`;
-            row.insertCell(3).innerHTML = stokAkhir >= 0 ? `<b style="color:#059669;">${stokAkhir.toLocaleString()}</b>` : `<b style="color:#dc2626;">${stokAkhir.toLocaleString()}</b>`;
-            const detailCell = row.insertCell(4);
-            if (keluar > 0) {
-                const link = document.createElement('span'); link.className = 'detail-link'; link.innerText = `📋 ${keluar} transaksi`; link.onclick = () => showKeluarDetail(item.name, keluarTransaksi);
-                detailCell.appendChild(link);
-            } else { detailCell.innerText = '-'; }
+            row.insertCell(3).innerHTML = stok >= 0 ? `<b style="color:#059669;">${stok.toLocaleString()}</b>` : `<b style="color:#dc2626;">${stok.toLocaleString()}</b>`;
         });
     }
     
     function renderTransactions() {
-        const masukBody = document.getElementById('masukTableBody'); const keluarBody = document.getElementById('keluarTableBody');
+        const masukBody = document.getElementById('masukTableBody');
+        const keluarBody = document.getElementById('keluarTableBody');
         masukBody.innerHTML = ''; keluarBody.innerHTML = '';
         [...transactions].sort((a,b)=>b.date.localeCompare(a.date)).forEach(tr => {
             const item = items.find(i => i.id === tr.itemId);
             if (!item) return;
             if (tr.type === 'masuk') {
                 const row = masukBody.insertRow();
-                row.insertCell(0).innerText = tr.date; row.insertCell(1).innerText = item.name;
-                row.insertCell(2).innerText = tr.quantityPcs.toLocaleString(); row.insertCell(3).innerText = tr.unitRaw || '-';
+                row.insertCell(0).innerText = tr.date;
+                row.insertCell(1).innerText = item.name;
+                row.insertCell(2).innerText = tr.quantityPcs.toLocaleString();
+                row.insertCell(3).innerText = tr.unitRaw || '-';
             } else {
                 const row = keluarBody.insertRow();
-                row.insertCell(0).innerText = tr.date; row.insertCell(1).innerText = item.name;
+                row.insertCell(0).innerText = tr.date;
+                row.insertCell(1).innerText = item.name;
                 row.insertCell(2).innerText = tr.quantityPcs.toLocaleString();
-                row.insertCell(3).innerText = tr.source === 'url_scan_direct' ? 'Scan URL' : (tr.source === 'edit_manual' ? 'Edit' : 'Manual');
+                row.insertCell(3).innerText = tr.source === 'url_scan_direct' ? 'Scan URL' : (tr.source === 'edit_manual' ? 'Edit Manual' : 'Manual');
             }
         });
     }
@@ -687,7 +654,12 @@
         const select = document.getElementById('itemNameSelect');
         const old = select.value;
         select.innerHTML = '<option value="">-- Pilih barang --</option>';
-        items.forEach(i => { const opt = document.createElement('option'); opt.value = i.name; opt.textContent = `${i.name} (${getStok(i.id)} PCS)`; select.appendChild(opt); });
+        items.forEach(i => { 
+            const opt = document.createElement('option'); 
+            opt.value = i.name; 
+            opt.textContent = `${i.name} (${getStok(i.id)} PCS)`; 
+            select.appendChild(opt); 
+        });
         if (old && items.some(i=>i.name===old)) select.value = old;
     }
     
@@ -698,43 +670,56 @@
         document.getElementById('conversionHint').innerHTML = `→ ${pcs.toLocaleString()} pcs`;
     }
     
-    async function downloadImg(dataURL, name) { const a = document.createElement('a'); a.download = `${name}_barcode.png`; a.href = dataURL; a.click(); }
+    async function downloadImg(dataURL, name, format) {
+        const link = document.createElement('a');
+        if (format === 'png') { link.download = `${name}_barcode_url.png`; link.href = dataURL; }
+        link.click();
+    }
+    
     async function downloadPDF(dataURL, name, url) {
-        if (typeof window.jspdf === 'undefined') { showToast("PDF lib gagal", true); return; }
+        if (typeof window.jspdf === 'undefined') {
+            showToast("Library PDF belum siap, coba lagi.", true);
+            return;
+        }
         const { jsPDF } = window.jspdf;
         const img = new Image(); img.src = dataURL;
         await new Promise(r => { img.onload = r; });
         const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
         const w = 70, h = (img.height * w) / img.width;
-        pdf.setFontSize(14); pdf.text(`Barcode: ${name}`, 105, 20, { align: 'center' });
+        pdf.setFontSize(14);
+        pdf.text(`Barcode URL: ${name}`, 105, 20, { align: 'center' });
         pdf.addImage(img, 'PNG', (210-w)/2, 30, w, h);
-        pdf.setFontSize(8); pdf.text(url, 105, 30+h+8, { align: 'center', maxWidth: 180 });
-        pdf.save(`${name}_barcode.pdf`);
+        pdf.setFontSize(8);
+        pdf.text(url, 105, 30+h+8, { align: 'center', maxWidth: 180 });
+        pdf.save(`${name}_barcode_url.pdf`);
     }
     
     document.getElementById('printAllBarcodeBtn').addEventListener('click', () => {
         if (!items.length) { alert("Tidak ada barcode"); return; }
         const printDiv = document.getElementById('printArea');
-        let html = `<div style="text-align:center;"><h2>Daftar Barcode URL</h2><p>${new Date().toLocaleString()}</p></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;">`;
-        items.forEach(item => { html += `<div style="border:1px solid #aaa;border-radius:16px;padding:12px;text-align:center;"><strong>${item.name}</strong><br><img src="${item.qrDataURL}" width="120"><br><span style="font-size:8px;">${item.outgoingURL}</span><div>Stok: ${getStok(item.id)} PCS</div></div>`; });
-        html += `</div>`; printDiv.innerHTML = html; window.print();
+        let html = `<div style="text-align:center;"><h2>Daftar Barcode URL</h2><p>${new Date().toLocaleString()}</p><small>Scan dengan kamera HP → otomatis buka halaman & kurangi stok</small></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;">`;
+        items.forEach(item => {
+            html += `<div style="border:1px solid #aaa;border-radius:16px;padding:12px;text-align:center;">
+                        <strong>${item.name}</strong><br>
+                        <img src="${item.qrDataURL}" width="120"><br>
+                        <span style="font-size:8px;word-break:break-all;">${item.outgoingURL}</span>
+                        <div>Stok: ${getStok(item.id)} PCS</div>
+                    </div>`;
+        });
+        html += `</div>`;
+        printDiv.innerHTML = html;
+        window.print();
     });
     
     document.getElementById('exportRekapExcel').addEventListener('click', () => {
-        const wsData = [[`Rekap Stok Bulan ${currentMonth}/${currentYear}`, "", "", ""], ["Nama Barang", "Total Masuk (PCS)", "Total Keluar (PCS)", "Stok Akhir (PCS)"]];
-        let filteredItems = items;
-        if (currentRekapSearch) filteredItems = items.filter(item => item.name.toLowerCase().includes(currentRekapSearch.toLowerCase()));
-        filteredItems.forEach(item => {
-            const masuk = getTotalMasuk(item.id, currentMonth, currentYear);
-            const keluar = getTotalKeluar(item.id, currentMonth, currentYear);
-            const stokAwal = getTotalMasuk(item.id) - getTotalKeluar(item.id) - (masuk - keluar);
-            const stokAkhir = stokAwal + masuk - keluar;
-            wsData.push([item.name, masuk, keluar, stokAkhir]);
+        const wsData = [["Nama Barang", "Total Masuk (PCS)", "Total Keluar (PCS)", "Stok Total (PCS)", "Barcode URL"]];
+        items.forEach(item => {
+            wsData.push([item.name, getTotalMasuk(item.id), getTotalKeluar(item.id), getStok(item.id), item.outgoingURL]);
         });
         const ws = XLSX.utils.aoa_to_sheet(wsData);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, `Rekap_${currentMonth}_${currentYear}`);
-        XLSX.writeFile(wb, `rekap_stok_${currentYear}_${currentMonth}.xlsx`);
+        XLSX.utils.book_append_sheet(wb, ws, "Rekap_Barcode_URL");
+        XLSX.writeFile(wb, `rekap_barcode_url_${new Date().toISOString().slice(0,10)}.xlsx`);
     });
     
     document.getElementById('addStockBtn').addEventListener('click', async () => {
@@ -748,32 +733,23 @@
         let date = document.getElementById('masukDate').value;
         if (!date) date = new Date().toISOString().slice(0,10);
         await addMasukTransaction(finalName, unit, qty, date);
-        document.getElementById('newItemName').value = ''; document.getElementById('unitQty').value = '1';
+        document.getElementById('newItemName').value = '';
+        document.getElementById('unitQty').value = '1';
     });
     
-    document.getElementById('searchBarang').addEventListener('input', (e) => { currentSearchTerm = e.target.value; renderBarangTable(); });
-    document.getElementById('searchRekap').addEventListener('input', (e) => { currentRekapSearch = e.target.value; renderRekapPerBulan(); });
-    
-    function changeMonth(delta) {
-        let newMonth = currentMonth + delta;
-        let newYear = currentYear;
-        if (newMonth < 1) { newMonth = 12; newYear--; }
-        if (newMonth > 12) { newMonth = 1; newYear++; }
-        currentMonth = newMonth; currentYear = newYear;
-        document.getElementById('monthSelect').value = currentMonth;
-        document.getElementById('yearSelect').value = currentYear;
-        renderRekapPerBulan();
-    }
-    document.getElementById('prevMonthBtn').addEventListener('click', () => changeMonth(-1));
-    document.getElementById('nextMonthBtn').addEventListener('click', () => changeMonth(1));
-    document.getElementById('monthSelect').addEventListener('change', (e) => { currentMonth = parseInt(e.target.value); renderRekapPerBulan(); });
-    document.getElementById('yearSelect').addEventListener('change', (e) => { currentYear = parseInt(e.target.value); renderRekapPerBulan(); });
+    // Pencarian
+    document.getElementById('searchBarang').addEventListener('input', (e) => {
+        currentSearchTerm = e.target.value;
+        renderBarangTable();
+        renderRekap();
+    });
     
     // Modal handlers
-    document.getElementById('closeModalBtn').addEventListener('click', () => { document.getElementById('editModal').style.display = 'none'; });
+    document.getElementById('closeModalBtn').addEventListener('click', () => {
+        document.getElementById('editModal').style.display = 'none';
+    });
     document.getElementById('saveEditBtn').addEventListener('click', saveEditItem);
-    document.getElementById('closeDetailBtn').addEventListener('click', () => { document.getElementById('detailModal').style.display = 'none'; });
-    window.addEventListener('click', (e) => { if (e.target === document.getElementById('editModal')) document.getElementById('editModal').style.display = 'none'; if (e.target === document.getElementById('detailModal')) document.getElementById('detailModal').style.display = 'none'; });
+    window.addEventListener('click', (e) => { if (e.target === document.getElementById('editModal')) document.getElementById('editModal').style.display = 'none'; });
     
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -795,16 +771,21 @@
         const storedTrans = localStorage.getItem('urlBarcodeTransactions');
         if (storedItems) items = JSON.parse(storedItems);
         if (storedTrans) transactions = JSON.parse(storedTrans);
+        
         let needRecreate = false;
-        for (let i = 0; i < items.length; i++) { if (!items[i].qrDataURL || !items[i].outgoingURL) { needRecreate = true; break; } }
+        for (let i = 0; i < items.length; i++) {
+            if (!items[i].qrDataURL || !items[i].outgoingURL) {
+                needRecreate = true;
+                break;
+            }
+        }
         if (items.length === 0 || needRecreate) {
-            const demo1 = await createItem("Speaker JBL"); const demo2 = await createItem("Mouse Logitech");
+            const demo1 = await createItem("Speaker JBL");
+            const demo2 = await createItem("Mouse Logitech");
             items = [demo1, demo2];
             transactions = [
                 { id: Date.now()+1, itemId: demo1.id, type: 'masuk', date: '2025-01-15', quantityPcs: 5000, unitRaw: '5 Box', note: 'Awal' },
-                { id: Date.now()+2, itemId: demo2.id, type: 'masuk', date: '2025-01-16', quantityPcs: 3000, unitRaw: '3 Box', note: 'Awal' },
-                { id: Date.now()+3, itemId: demo1.id, type: 'keluar', date: '2025-01-20', quantityPcs: 2, unitRaw: '2 PCS', source: 'url_scan_direct' },
-                { id: Date.now()+4, itemId: demo2.id, type: 'keluar', date: '2025-02-05', quantityPcs: 1, unitRaw: '1 PCS', source: 'manual' }
+                { id: Date.now()+2, itemId: demo2.id, type: 'masuk', date: '2025-01-16', quantityPcs: 3000, unitRaw: '3 Box', note: 'Awal' }
             ];
             saveToLocal();
         }
@@ -816,7 +797,9 @@
     document.getElementById('unitQty').addEventListener('input', updateConversion);
     updateConversion();
     
-    loadFromLocal().then(() => { handleIncomingURL(); });
+    loadFromLocal().then(() => {
+        handleIncomingURL();
+    });
 </script>
 </body>
 </html>
