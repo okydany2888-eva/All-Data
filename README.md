@@ -89,6 +89,7 @@
         .btn-success { background: #059669; color: white; }
         .btn-danger { background: #dc2626; color: white; }
         .btn-secondary { background: #475569; color: white; }
+        .btn-warning { background: #eab308; color: white; }
         .btn-sm { padding: 8px 12px; font-size: 0.7rem; width: auto; }
         .table-wrapper {
             overflow-x: auto;
@@ -100,7 +101,7 @@
             width: 100%;
             border-collapse: collapse;
             font-size: 0.7rem;
-            min-width: 400px;
+            min-width: 500px;
         }
         th, td {
             padding: 10px 6px;
@@ -119,21 +120,6 @@
             border-radius: 12px;
             border: 1px solid #cbd5e1;
             box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-        }
-        .scanner-area {
-            background: #0f172a;
-            border-radius: 24px;
-            padding: 16px;
-            color: white;
-        }
-        .scan-result {
-            background: #1e293b;
-            border-radius: 16px;
-            padding: 10px;
-            margin-top: 12px;
-            font-family: monospace;
-            font-size: 0.75rem;
-            word-break: break-all;
         }
         .rekapan-card { background: linear-gradient(135deg, #fef9e3, #fef3c7); }
         .info-footer {
@@ -160,7 +146,7 @@
         }
         .tab-btn.active { background: #2563eb; color: white; }
         .transaction-table { max-height: 350px; overflow-y: auto; }
-        .btn-micro { padding: 4px 8px; font-size: 0.6rem; border-radius: 30px; }
+        .btn-micro { padding: 4px 8px; font-size: 0.6rem; border-radius: 30px; cursor: pointer; }
         .download-btns { display: flex; gap: 5px; flex-wrap: wrap; }
         .url-preview {
             background: #f1f5f9;
@@ -171,6 +157,34 @@
             font-family: monospace;
             margin-top: 8px;
         }
+        .search-box {
+            margin-bottom: 12px;
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: 60px;
+            border: 1.5px solid #e2e8f0;
+            font-size: 0.85rem;
+        }
+        /* Modal Style */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        }
+        .modal-content {
+            background: white;
+            border-radius: 28px;
+            padding: 20px;
+            width: 90%;
+            max-width: 400px;
+            margin: 20px;
+        }
+        .action-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
     </style>
 </head>
 <body>
@@ -218,9 +232,10 @@
     <!-- Daftar Barang & Barcode URL -->
     <div class="card">
         <div class="flex-between"><h3>📋 Barang & Barcode (URL)</h3><button class="btn-success btn-sm" id="printAllBarcodeBtn" style="width: auto;">🖨️ Cetak</button></div>
+        <input type="text" id="searchBarang" class="search-box" placeholder="🔍 Cari barang berdasarkan nama...">
         <div class="table-wrapper">
             <table id="barangTable">
-                <thead><tr><th>No</th><th>Nama Barang</th><th>Stok (PCS)</th><th>QR Code (URL)</th><th>Download</th></tr></thead>
+                <thead><tr><th>No</th><th>Nama Barang</th><th>Stok (PCS)</th><th>QR Code (URL)</th><th>Download</th><th>Aksi</th></tr></thead>
                 <tbody id="barangBody"></tbody>
             </table>
         </div>
@@ -242,16 +257,36 @@
 </div>
 <div id="printArea" style="display: none;"></div>
 
+<!-- Modal Edit Barang -->
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <h3 style="margin-bottom: 16px;">✏️ Edit Barang</h3>
+        <input type="hidden" id="editItemId">
+        <div class="input-group" style="margin-bottom: 12px;">
+            <label>Nama Barang</label>
+            <input type="text" id="editItemName" placeholder="Nama barang">
+        </div>
+        <div class="input-group" style="margin-bottom: 12px;">
+            <label>Sesuaikan Stok (opsional, PCS)</label>
+            <input type="number" id="editStockAdjust" value="0" step="1">
+            <small style="font-size:10px;">Isi dengan angka positif untuk tambah stok, negatif untuk kurangi stok (contoh: -5)</small>
+        </div>
+        <div class="action-btns">
+            <button class="btn-secondary btn-sm" id="closeModalBtn">Batal</button>
+            <button class="btn-primary btn-sm" id="saveEditBtn">Simpan Perubahan</button>
+        </div>
+    </div>
+</div>
+
 <script>
     // ==================== DATA & KONFIGURASI ====================
     let items = [];
     let transactions = [];
+    let currentSearchTerm = '';
     const unitToPcs = { 'pcs': 1, 'box': 1000, 'display': 1000, 'dus': 500, 'karton': 2000 };
     
-    // Base URL aplikasi ini (dinamis menggunakan lokasi saat ini)
     const BASE_URL = window.location.origin + window.location.pathname;
     
-    // Fungsi membuat URL untuk proses barang keluar (otomatis mengurangi stok)
     function generateOutgoingURL(itemId, itemName) {
         const url = new URL(BASE_URL);
         url.searchParams.set('action', 'out');
@@ -260,7 +295,6 @@
         return url.toString();
     }
     
-    // Generate QR Code dengan teks URL
     async function generateQRCodeWithURL(url, size = 160) {
         return new Promise((resolve) => {
             const container = document.createElement('div');
@@ -276,11 +310,9 @@
                 colorLight: "#ffffff",
                 correctLevel: QRCode.CorrectLevel.H
             });
-            // Beri waktu untuk QRCode merender canvas
             setTimeout(() => {
                 let canvas = container.querySelector('canvas');
                 if (!canvas) {
-                    // Fallback jika canvas tidak ditemukan
                     const fallback = document.createElement('canvas');
                     fallback.width = size; fallback.height = size;
                     const ctx = fallback.getContext('2d');
@@ -303,21 +335,12 @@
         });
     }
     
-    // Helper generate kode unik internal untuk item (tetap)
-    function generateInternalCode(name) {
-        const base = name.toLowerCase().replace(/[^a-z0-9]/g, '');
-        const time = Date.now().toString().slice(-6);
-        return `INV/${base.substring(0,8)}/${time}`;
-    }
-    
-    // Create item baru dengan QR URL
     async function createItem(name) {
-        const internalCode = generateInternalCode(name);
         const itemId = Date.now() + Math.random();
         const itemObject = {
             id: itemId,
             name: name,
-            uniqueCode: internalCode,
+            uniqueCode: `INV/${Date.now()}`,
             qrDataURL: null,
             outgoingURL: null
         };
@@ -328,12 +351,16 @@
         return itemObject;
     }
     
-    // Hitung stok
+    async function updateItemQR(item) {
+        const newUrl = generateOutgoingURL(item.id, encodeURIComponent(item.name));
+        item.outgoingURL = newUrl;
+        item.qrDataURL = await generateQRCodeWithURL(newUrl, 160);
+    }
+    
     function getTotalMasuk(itemId) { return transactions.filter(t => t.itemId === itemId && t.type === 'masuk').reduce((s, t) => s + t.quantityPcs, 0); }
     function getTotalKeluar(itemId) { return transactions.filter(t => t.itemId === itemId && t.type === 'keluar').reduce((s, t) => s + t.quantityPcs, 0); }
     function getStok(itemId) { return getTotalMasuk(itemId) - getTotalKeluar(itemId); }
     
-    // Tambah transaksi masuk
     async function addMasukTransaction(itemName, unitType, unitQty, date) {
         if (!itemName) return false;
         const pcs = unitQty * (unitToPcs[unitType] || 1);
@@ -358,7 +385,6 @@
         return true;
     }
     
-    // Proses keluar (pengurangan stok) - dipanggil via URL atau manual
     async function processOutgoing(itemId, source = 'url_scan') {
         const item = items.find(i => i.id == itemId);
         if (!item) {
@@ -386,7 +412,6 @@
         return true;
     }
     
-    // Menampilkan notifikasi singkat
     function showToast(msg, isError = false) {
         const toastDiv = document.createElement('div');
         toastDiv.innerText = msg;
@@ -405,20 +430,112 @@
         setTimeout(() => toastDiv.remove(), 2500);
     }
     
-    // ==================== HANDLE URL PARAMETER (saat halaman dibuka dari scan) ====================
     async function handleIncomingURL() {
         const urlParams = new URLSearchParams(window.location.search);
         const action = urlParams.get('action');
         const itemId = urlParams.get('id');
-        const itemNameRaw = urlParams.get('name');
         
         if (action === 'out' && itemId) {
-            // Hapus parameter dari URL agar tidak diproses berulang saat refresh
             const newUrl = window.location.pathname;
             window.history.replaceState({}, document.title, newUrl);
-            // Proses pengurangan stok
             await processOutgoing(itemId, 'url_scan_direct');
         }
+    }
+    
+    // ==================== EDIT & DELETE FUNCTIONS ====================
+    function openEditModal(itemId) {
+        const item = items.find(i => i.id == itemId);
+        if (!item) return;
+        document.getElementById('editItemId').value = item.id;
+        document.getElementById('editItemName').value = item.name;
+        document.getElementById('editStockAdjust').value = 0;
+        document.getElementById('editModal').style.display = 'flex';
+    }
+    
+    async function saveEditItem() {
+        const itemId = parseFloat(document.getElementById('editItemId').value);
+        const newName = document.getElementById('editItemName').value.trim();
+        const stockAdjust = parseInt(document.getElementById('editStockAdjust').value) || 0;
+        
+        if (!newName) {
+            showToast("Nama barang tidak boleh kosong!", true);
+            return;
+        }
+        
+        const itemIndex = items.findIndex(i => i.id == itemId);
+        if (itemIndex === -1) return;
+        
+        // Cek duplikasi nama (kecuali dirinya sendiri)
+        const duplicate = items.some((i, idx) => idx !== itemIndex && i.name.toLowerCase() === newName.toLowerCase());
+        if (duplicate) {
+            showToast(`Barang dengan nama "${newName}" sudah ada!`, true);
+            return;
+        }
+        
+        const oldName = items[itemIndex].name;
+        items[itemIndex].name = newName;
+        
+        // Update QR code dengan nama baru
+        await updateItemQR(items[itemIndex]);
+        
+        // Handle penyesuaian stok jika ada
+        if (stockAdjust !== 0) {
+            const today = new Date().toISOString().slice(0,10);
+            if (stockAdjust > 0) {
+                transactions.push({
+                    id: Date.now()+Math.random(),
+                    itemId: items[itemIndex].id,
+                    type: 'masuk',
+                    date: today,
+                    quantityPcs: stockAdjust,
+                    unitRaw: `${stockAdjust} PCS (penyesuaian)`,
+                    note: 'Penyesuaian stok via edit'
+                });
+                showToast(`📦 Stok ${newName} +${stockAdjust} PCS (penyesuaian)`);
+            } else if (stockAdjust < 0) {
+                const currentStok = getStok(items[itemIndex].id);
+                if (currentStok + stockAdjust < 0) {
+                    showToast(`⚠️ Stok tidak cukup! Stok saat ini ${currentStok} PCS, tidak bisa dikurangi ${Math.abs(stockAdjust)} PCS.`, true);
+                    // Jangan simpan perubahan stok, tapi nama tetap berubah
+                    saveToLocal();
+                    renderAll();
+                    document.getElementById('editModal').style.display = 'none';
+                    return;
+                }
+                transactions.push({
+                    id: Date.now()+Math.random(),
+                    itemId: items[itemIndex].id,
+                    type: 'keluar',
+                    date: today,
+                    quantityPcs: Math.abs(stockAdjust),
+                    unitRaw: `${Math.abs(stockAdjust)} PCS (penyesuaian)`,
+                    note: 'Penyesuaian stok via edit',
+                    source: 'edit_manual'
+                });
+                showToast(`📤 Stok ${newName} ${stockAdjust} PCS (penyesuaian)`);
+            }
+        }
+        
+        saveToLocal();
+        renderAll();
+        document.getElementById('editModal').style.display = 'none';
+        showToast(`✅ Barang berhasil diupdate: ${oldName} → ${newName}`);
+    }
+    
+    function deleteItem(itemId) {
+        if (!confirm("⚠️ Yakin ingin menghapus barang ini?\nSemua riwayat transaksi barang ini juga akan dihapus!")) return;
+        
+        const itemIndex = items.findIndex(i => i.id == itemId);
+        if (itemIndex === -1) return;
+        const itemName = items[itemIndex].name;
+        
+        // Hapus semua transaksi yang terkait dengan item ini
+        transactions = transactions.filter(t => t.itemId != itemId);
+        items.splice(itemIndex, 1);
+        
+        saveToLocal();
+        renderAll();
+        showToast(`🗑️ Barang "${itemName}" beserta riwayatnya telah dihapus.`);
     }
     
     // ==================== RENDER UI ====================
@@ -432,12 +549,19 @@
     
     function renderBarangTable() {
         const tbody = document.getElementById('barangBody');
-        if (!items.length) { tbody.innerHTML = '<tr><td colspan="5">Kosong</td></tr>'; return; }
+        let filteredItems = items;
+        if (currentSearchTerm) {
+            filteredItems = items.filter(item => item.name.toLowerCase().includes(currentSearchTerm.toLowerCase()));
+        }
+        
+        if (!filteredItems.length) { 
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">Tidak ada barang ditemukan</td></tr>`; 
+            return; 
+        }
         tbody.innerHTML = '';
-        items.forEach((item, idx) => {
+        filteredItems.forEach((item, idx) => {
             const stok = getStok(item.id);
             const row = tbody.insertRow();
-            row.setAttribute('data-item-id', item.id);
             row.insertCell(0).innerText = idx+1;
             row.insertCell(1).innerText = item.name;
             row.insertCell(2).innerHTML = stok >= 0 ? `<b class="stok-masuk">${stok.toLocaleString()}</b>` : `<b class="stok-keluar">${stok.toLocaleString()}</b>`;
@@ -469,14 +593,31 @@
             pdf.onclick = () => downloadPDF(item.qrDataURL, item.name, item.outgoingURL);
             div.appendChild(png); div.appendChild(pdf);
             downCell.appendChild(div);
+            
+            const actionCell = row.insertCell(5);
+            const editBtn = document.createElement('button');
+            editBtn.innerText = '✏️ Edit';
+            editBtn.className = 'btn-micro btn-warning';
+            editBtn.style.marginRight = '5px';
+            editBtn.onclick = () => openEditModal(item.id);
+            const delBtn = document.createElement('button');
+            delBtn.innerText = '🗑️ Hapus';
+            delBtn.className = 'btn-micro btn-danger';
+            delBtn.onclick = () => deleteItem(item.id);
+            actionCell.appendChild(editBtn);
+            actionCell.appendChild(delBtn);
         });
     }
     
     function renderRekap() {
         const tbody = document.getElementById('rekapBody');
-        if (!items.length) { tbody.innerHTML = '<tr><td colspan="4">Kosong</td></tr>'; return; }
+        let filteredItems = items;
+        if (currentSearchTerm) {
+            filteredItems = items.filter(item => item.name.toLowerCase().includes(currentSearchTerm.toLowerCase()));
+        }
+        if (!filteredItems.length) { tbody.innerHTML = '<tr><td colspan="4">Kosong</td></tr>'; return; }
         tbody.innerHTML = '';
-        items.forEach(item => {
+        filteredItems.forEach(item => {
             const masuk = getTotalMasuk(item.id), keluar = getTotalKeluar(item.id), stok = masuk - keluar;
             const row = tbody.insertRow();
             row.insertCell(0).innerText = item.name;
@@ -504,7 +645,7 @@
                 row.insertCell(0).innerText = tr.date;
                 row.insertCell(1).innerText = item.name;
                 row.insertCell(2).innerText = tr.quantityPcs.toLocaleString();
-                row.insertCell(3).innerText = tr.source === 'url_scan_direct' ? 'Scan URL' : 'Manual';
+                row.insertCell(3).innerText = tr.source === 'url_scan_direct' ? 'Scan URL' : (tr.source === 'edit_manual' ? 'Edit Manual' : 'Manual');
             }
         });
     }
@@ -532,18 +673,10 @@
     async function downloadImg(dataURL, name, format) {
         const link = document.createElement('a');
         if (format === 'png') { link.download = `${name}_barcode_url.png`; link.href = dataURL; }
-        else if (format === 'jpg') {
-            const img = new Image(); img.src = dataURL;
-            await new Promise(r => { img.onload = r; });
-            const canvas = document.createElement('canvas'); canvas.width = img.width; canvas.height = img.height;
-            const ctx = canvas.getContext('2d'); ctx.fillStyle = 'white'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0);
-            link.download = `${name}_barcode_url.jpg`; link.href = canvas.toDataURL('image/jpeg',0.9);
-        }
         link.click();
     }
     
     async function downloadPDF(dataURL, name, url) {
-        // Pastikan jsPDF sudah dimuat
         if (typeof window.jspdf === 'undefined') {
             showToast("Library PDF belum siap, coba lagi.", true);
             return;
@@ -561,7 +694,6 @@
         pdf.save(`${name}_barcode_url.pdf`);
     }
     
-    // Cetak semua barcode
     document.getElementById('printAllBarcodeBtn').addEventListener('click', () => {
         if (!items.length) { alert("Tidak ada barcode"); return; }
         const printDiv = document.getElementById('printArea');
@@ -579,7 +711,6 @@
         window.print();
     });
     
-    // Export rekap excel
     document.getElementById('exportRekapExcel').addEventListener('click', () => {
         const wsData = [["Nama Barang", "Total Masuk (PCS)", "Total Keluar (PCS)", "Stok Total (PCS)", "Barcode URL"]];
         items.forEach(item => {
@@ -591,7 +722,6 @@
         XLSX.writeFile(wb, `rekap_barcode_url_${new Date().toISOString().slice(0,10)}.xlsx`);
     });
     
-    // Tombol tambah stok masuk
     document.getElementById('addStockBtn').addEventListener('click', async () => {
         let selected = document.getElementById('itemNameSelect').value;
         let newName = document.getElementById('newItemName').value.trim();
@@ -607,7 +737,20 @@
         document.getElementById('unitQty').value = '1';
     });
     
-    // Tab switching
+    // Pencarian
+    document.getElementById('searchBarang').addEventListener('input', (e) => {
+        currentSearchTerm = e.target.value;
+        renderBarangTable();
+        renderRekap();
+    });
+    
+    // Modal handlers
+    document.getElementById('closeModalBtn').addEventListener('click', () => {
+        document.getElementById('editModal').style.display = 'none';
+    });
+    document.getElementById('saveEditBtn').addEventListener('click', saveEditItem);
+    window.addEventListener('click', (e) => { if (e.target === document.getElementById('editModal')) document.getElementById('editModal').style.display = 'none'; });
+    
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -618,7 +761,6 @@
         });
     });
     
-    // Local storage
     function saveToLocal() {
         localStorage.setItem('urlBarcodeInventory', JSON.stringify(items.map(i => ({ id: i.id, name: i.name, uniqueCode: i.uniqueCode, qrDataURL: i.qrDataURL, outgoingURL: i.outgoingURL }))));
         localStorage.setItem('urlBarcodeTransactions', JSON.stringify(transactions));
@@ -629,7 +771,7 @@
         const storedTrans = localStorage.getItem('urlBarcodeTransactions');
         if (storedItems) items = JSON.parse(storedItems);
         if (storedTrans) transactions = JSON.parse(storedTrans);
-        // Validasi dan pastikan setiap item punya qrDataURL dan outgoingURL yang valid
+        
         let needRecreate = false;
         for (let i = 0; i < items.length; i++) {
             if (!items[i].qrDataURL || !items[i].outgoingURL) {
@@ -638,7 +780,6 @@
             }
         }
         if (items.length === 0 || needRecreate) {
-            // Buat data demo
             const demo1 = await createItem("Speaker JBL");
             const demo2 = await createItem("Mouse Logitech");
             items = [demo1, demo2];
@@ -656,7 +797,6 @@
     document.getElementById('unitQty').addEventListener('input', updateConversion);
     updateConversion();
     
-    // Inisialisasi dan handle URL parameter
     loadFromLocal().then(() => {
         handleIncomingURL();
     });
